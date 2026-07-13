@@ -3,12 +3,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
 from app.services.groq import call_groq
+from app.pipeline.guard import run_guard_stage
 from app.pipeline.memory import run_memory_stage
 from app.pipeline.compressor import run_compressor_stage
+from app.pipeline.validator import run_validator_stage
+from app.pipeline.tracer import write_traces
 
 
 async def classify_with_groq(message: str) -> str:
-    """Classify prompt category using Groq."""
     system = """You are a prompt classifier. Classify the user prompt into exactly one category:
 - coding: writing, debugging, or explaining code
 - reasoning: math, logic, multi-step problems, analysis
@@ -37,27 +39,41 @@ async def run_pipeline(
 ) -> dict:
     traces = []
 
-    # --- Stage 1: Memory — embed + retrieve ---
+    # --- Stage 1: Guard — PII + injection check ---
+    guard_trace, cleaned_message, blocked = await run_guard_stage(
+        message=message,
+        pii_masking_enabled=user.pii_masking_enabled,
+    )
+    traces.append(guard_trace)
+
+    if blocked:
+        await write_traces(db, message_id, traces)
+        return {
+            "response": "Your request was blocked by the security policy.",
+            "traces": traces,
+        }
+
+    # --- Stage 2: Memory — embed + retrieve ---
     memory_trace, similar_messages = await run_memory_stage(
         db=db,
         user_id=user.id,
         message_id=message_id,
-        message=message,
+        message=cleaned_message,
         max_chunks=user.max_memory_chunks,
     )
     traces.append(memory_trace)
 
-    # --- Stage 2: Compressor — trim context to token budget ---
+    # --- Stage 3: Compressor — trim to token budget ---
     compressor_trace, context = await run_compressor_stage(
-        message=message,
+        message=cleaned_message,
         similar_messages=similar_messages,
         token_budget=user.token_budget,
     )
     traces.append(compressor_trace)
 
-    # --- Stage 3: Router — classify prompt ---
+    # --- Stage 4: Router — classify prompt ---
     t0 = time.time()
-    category = await classify_with_groq(message)
+    category = await classify_with_groq(cleaned_message)
     traces.append({
         "stage": "router",
         "status": "pass",
@@ -68,17 +84,16 @@ async def run_pipeline(
         "detail": {"category": category},
     })
 
-    # --- Stage 4: LLM call — with memory context injected ---
+    # --- Stage 5: LLM call — with memory context injected ---
     t0 = time.time()
 
-    # Build the full prompt with context
     if context:
         full_prompt = f"""Here is relevant context from previous conversation:
 {context}
 
-Current message: {message}"""
+Current message: {cleaned_message}"""
     else:
-        full_prompt = message
+        full_prompt = cleaned_message
 
     if user.preferred_provider == "gemini":
         from app.services.gemini import call_gemini
@@ -104,7 +119,17 @@ Current message: {message}"""
         },
     })
 
+    # --- Stage 6: Validator — toxicity check on output ---
+    validator_trace, final_response, _ = await run_validator_stage(
+        response=response,
+        toxicity_threshold=user.toxicity_threshold,
+    )
+    traces.append(validator_trace)
+
+    # --- Stage 7: Write all traces to DB ---
+    await write_traces(db, message_id, traces)
+
     return {
-        "response": response,
+        "response": final_response,
         "traces": traces,
     }
