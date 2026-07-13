@@ -8,6 +8,7 @@ from app.pipeline.memory import run_memory_stage
 from app.pipeline.compressor import run_compressor_stage
 from app.pipeline.validator import run_validator_stage
 from app.pipeline.tracer import write_traces
+from app.api.websocket import push_trace_event
 
 
 async def classify_with_groq(message: str) -> str:
@@ -39,12 +40,13 @@ async def run_pipeline(
 ) -> dict:
     traces = []
 
-    # --- Stage 1: Guard — PII + injection check ---
+    # --- Stage 1: Guard ---
     guard_trace, cleaned_message, blocked = await run_guard_stage(
         message=message,
         pii_masking_enabled=user.pii_masking_enabled,
     )
     traces.append(guard_trace)
+    await push_trace_event(user.id, guard_trace)
 
     if blocked:
         await write_traces(db, message_id, traces)
@@ -53,7 +55,7 @@ async def run_pipeline(
             "traces": traces,
         }
 
-    # --- Stage 2: Memory — embed + retrieve ---
+    # --- Stage 2: Memory ---
     memory_trace, similar_messages = await run_memory_stage(
         db=db,
         user_id=user.id,
@@ -62,19 +64,21 @@ async def run_pipeline(
         max_chunks=user.max_memory_chunks,
     )
     traces.append(memory_trace)
+    await push_trace_event(user.id, memory_trace)
 
-    # --- Stage 3: Compressor — trim to token budget ---
+    # --- Stage 3: Compressor ---
     compressor_trace, context = await run_compressor_stage(
         message=cleaned_message,
         similar_messages=similar_messages,
         token_budget=user.token_budget,
     )
     traces.append(compressor_trace)
+    await push_trace_event(user.id, compressor_trace)
 
-    # --- Stage 4: Router — classify prompt ---
+    # --- Stage 4: Router ---
     t0 = time.time()
     category = await classify_with_groq(cleaned_message)
-    traces.append({
+    router_trace = {
         "stage": "router",
         "status": "pass",
         "latency_ms": round((time.time() - t0) * 1000, 2),
@@ -82,9 +86,11 @@ async def run_pipeline(
         "tokens_out": None,
         "model_used": "llama-3.1-8b-instant",
         "detail": {"category": category},
-    })
+    }
+    traces.append(router_trace)
+    await push_trace_event(user.id, router_trace)
 
-    # --- Stage 5: LLM call — with memory context injected ---
+    # --- Stage 5: LLM ---
     t0 = time.time()
 
     if context:
@@ -105,7 +111,7 @@ Current message: {cleaned_message}"""
             category=category,
         )
 
-    traces.append({
+    llm_trace = {
         "stage": "llm",
         "status": "pass",
         "latency_ms": round((time.time() - t0) * 1000, 2),
@@ -117,14 +123,17 @@ Current message: {cleaned_message}"""
             "provider": user.preferred_provider,
             "context_injected": bool(context),
         },
-    })
+    }
+    traces.append(llm_trace)
+    await push_trace_event(user.id, llm_trace)
 
-    # --- Stage 6: Validator — toxicity check on output ---
+    # --- Stage 6: Validator ---
     validator_trace, final_response, _ = await run_validator_stage(
         response=response,
         toxicity_threshold=user.toxicity_threshold,
     )
     traces.append(validator_trace)
+    await push_trace_event(user.id, validator_trace)
 
     # --- Stage 7: Write all traces to DB ---
     await write_traces(db, message_id, traces)
