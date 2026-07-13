@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
 from app.core.database import init_db
-from app.api import auth, chat, traces, health
+from app.api import auth, chat, traces, health, websocket
 
 settings = get_settings()
 
@@ -34,6 +34,7 @@ app.include_router(health.router)
 app.include_router(auth.router, prefix="/api")
 app.include_router(chat.router, prefix="/api")
 app.include_router(traces.router, prefix="/api")
+app.include_router(websocket.router)
 
 
 @app.get("/")
