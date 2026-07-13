@@ -8,7 +8,7 @@ genai.configure(api_key=settings.GEMINI_API_KEY)
 _flash = genai.GenerativeModel("gemini-2.0-flash")
 _pro = genai.GenerativeModel("gemini-2.0-flash")
 
-EMBEDDING_MODEL = "gemini-embedding-001"
+EMBEDDING_MODEL = "models/gemini-embedding-001"
 
 
 async def call_gemini(

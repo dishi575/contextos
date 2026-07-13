@@ -11,7 +11,7 @@ class Message(Base):
     session_id = Column(Integer, ForeignKey("sessions.id"), nullable=False)
     role = Column(String, nullable=False)        # "user" | "assistant"
     content = Column(Text, nullable=False)
-    embedding = Column(Vector(768), nullable=True)
+    embedding = Column(Vector(3072), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     session = relationship("Session", back_populates="messages")
