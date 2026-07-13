@@ -6,8 +6,8 @@ settings = get_settings()
 genai.configure(api_key=settings.GEMINI_API_KEY)
 
 # Model instances — configured once at import, reused across requests
-_flash = genai.GenerativeModel("gemini-1.5-flash")
-_pro = genai.GenerativeModel("gemini-1.5-pro")
+_flash = genai.GenerativeModel("gemini-2.0-flash")
+_pro = genai.GenerativeModel("gemini-2.0-flash")
 
 EMBEDDING_MODEL = "models/text-embedding-004"
 

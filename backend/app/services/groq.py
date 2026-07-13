@@ -7,14 +7,14 @@ _client = Groq(api_key=settings.GROQ_API_KEY)
 
 # Available models and what they're good at
 GROQ_MODELS = {
-    "coding":    "llama3-70b-8192",    # best for code
-    "reasoning": "llama3-70b-8192",    # best for logic/analysis
-    "creative":  "mixtral-8x7b-32768", # good context window for creative
-    "factual":   "llama3-8b-8192",     # fast, enough for factual QA
-    "simple":    "llama3-8b-8192",     # fastest for trivial requests
+    "coding":    "llama-3.3-70b-versatile",
+    "reasoning": "llama-3.3-70b-versatile",
+    "creative":  "llama-3.1-8b-instant",
+    "factual":   "llama-3.1-8b-instant",
+    "simple":    "llama-3.1-8b-instant",
 }
 
-DEFAULT_MODEL = "llama3-8b-8192"
+DEFAULT_MODEL = "llama-3.1-8b-instant"
 
 
 async def call_groq(
