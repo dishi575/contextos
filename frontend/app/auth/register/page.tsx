@@ -23,7 +23,6 @@ export default function RegisterPage() {
       setError("Passwords do not match");
       return;
     }
-
     if (password.length < 6) {
       setError("Password must be at least 6 characters");
       return;
@@ -47,70 +46,114 @@ export default function RegisterPage() {
     }
   };
 
-  const inputStyle = {
+  const inputStyle: React.CSSProperties = {
+    width: "100%",
     background: "#111d35",
     border: "1px solid #1e3a5f",
+    borderRadius: "8px",
+    padding: "10px 14px",
     color: "#f0f4ff",
+    fontSize: "13px",
+    outline: "none",
+    boxSizing: "border-box",
+  };
+
+  const labelStyle: React.CSSProperties = {
+    color: "#6b8cba",
+    fontSize: "12px",
+    display: "block",
+    marginBottom: "6px",
   };
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center px-4"
-      style={{ background: "#0a0f1e" }}
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "0 16px",
+        background: "#0a0f1e",
+      }}
     >
-      <div className="w-full max-w-md">
+      <div style={{ width: "100%", maxWidth: "420px" }}>
 
         {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 mb-3">
+        <div style={{ textAlign: "center", marginBottom: "32px" }}>
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "10px",
+              marginBottom: "10px",
+            }}
+          >
             <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm"
-              style={{ background: "#2563eb" }}
+              style={{
+                width: "32px",
+                height: "32px",
+                borderRadius: "8px",
+                background: "#2563eb",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#fff",
+                fontWeight: "700",
+                fontSize: "14px",
+                flexShrink: 0,
+              }}
             >
               C
             </div>
             <h1
-              className="text-2xl font-bold tracking-tight"
-              style={{ color: "#f0f4ff" }}
+              style={{
+                color: "#f0f4ff",
+                fontSize: "22px",
+                fontWeight: "700",
+                margin: 0,
+                letterSpacing: "-0.3px",
+              }}
             >
               ContextOS
             </h1>
           </div>
-          <p style={{ color: "#6b8cba" }} className="text-sm">
+          <p style={{ color: "#6b8cba", fontSize: "13px", margin: 0 }}>
             Intelligent middleware for LLM applications
           </p>
         </div>
 
         {/* Card */}
         <div
-          className="rounded-2xl p-8"
           style={{
             background: "#0d1526",
             border: "1px solid #1e3a5f",
+            borderRadius: "16px",
+            padding: "32px",
           }}
         >
           <h2
-            className="text-lg font-semibold mb-6"
-            style={{ color: "#f0f4ff" }}
+            style={{
+              color: "#f0f4ff",
+              fontSize: "17px",
+              fontWeight: "600",
+              margin: "0 0 24px",
+            }}
           >
             Create your account
           </h2>
 
-          <form onSubmit={handleRegister} className="space-y-4">
+          <form
+            onSubmit={handleRegister}
+            style={{ display: "flex", flexDirection: "column", gap: "16px" }}
+          >
             <div>
-              <label
-                className="text-sm block mb-1.5"
-                style={{ color: "#6b8cba" }}
-              >
-                Email
-              </label>
+              <label style={labelStyle}>Email</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 placeholder="you@example.com"
-                className="w-full rounded-lg px-4 py-2.5 text-sm outline-none transition-all"
                 style={inputStyle}
                 onFocus={(e) => (e.target.style.borderColor = "#2563eb")}
                 onBlur={(e) => (e.target.style.borderColor = "#1e3a5f")}
@@ -118,19 +161,13 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label
-                className="text-sm block mb-1.5"
-                style={{ color: "#6b8cba" }}
-              >
-                Password
-              </label>
+              <label style={labelStyle}>Password</label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 placeholder="••••••••"
-                className="w-full rounded-lg px-4 py-2.5 text-sm outline-none transition-all"
                 style={inputStyle}
                 onFocus={(e) => (e.target.style.borderColor = "#2563eb")}
                 onBlur={(e) => (e.target.style.borderColor = "#1e3a5f")}
@@ -138,19 +175,13 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label
-                className="text-sm block mb-1.5"
-                style={{ color: "#6b8cba" }}
-              >
-                Confirm password
-              </label>
+              <label style={labelStyle}>Confirm password</label>
               <input
                 type="password"
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
                 required
                 placeholder="••••••••"
-                className="w-full rounded-lg px-4 py-2.5 text-sm outline-none transition-all"
                 style={inputStyle}
                 onFocus={(e) => (e.target.style.borderColor = "#2563eb")}
                 onBlur={(e) => (e.target.style.borderColor = "#1e3a5f")}
@@ -159,11 +190,13 @@ export default function RegisterPage() {
 
             {error && (
               <div
-                className="rounded-lg px-4 py-2.5 text-sm"
                 style={{
                   background: "rgba(239,68,68,0.08)",
                   border: "1px solid rgba(239,68,68,0.3)",
+                  borderRadius: "8px",
+                  padding: "10px 14px",
                   color: "#f87171",
+                  fontSize: "13px",
                 }}
               >
                 {error}
@@ -173,34 +206,58 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full font-medium rounded-lg py-2.5 text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ background: "#2563eb", color: "#fff" }}
-              onMouseEnter={(e) =>
-                !loading &&
-                ((e.target as HTMLElement).style.background = "#1d4ed8")
-              }
-              onMouseLeave={(e) =>
-                !loading &&
-                ((e.target as HTMLElement).style.background = "#2563eb")
-              }
+              style={{
+                width: "100%",
+                background: "#2563eb",
+                color: "#fff",
+                border: "none",
+                borderRadius: "8px",
+                padding: "11px",
+                fontSize: "13px",
+                fontWeight: "600",
+                cursor: loading ? "not-allowed" : "pointer",
+                opacity: loading ? 0.6 : 1,
+                marginTop: "4px",
+              }}
+              onMouseEnter={(e) => {
+                if (!loading)
+                  (e.currentTarget as HTMLElement).style.background = "#1d4ed8";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLElement).style.background = "#2563eb";
+              }}
             >
               {loading ? "Creating account..." : "Create account"}
             </button>
           </form>
 
-          <p className="text-sm text-center mt-6" style={{ color: "#6b8cba" }}>
+          <p
+            style={{
+              color: "#6b8cba",
+              fontSize: "13px",
+              textAlign: "center",
+              marginTop: "24px",
+              marginBottom: 0,
+            }}
+          >
             Already have an account?{" "}
             <Link
               href="/auth/login"
-              className="transition-colors"
-              style={{ color: "#3b82f6" }}
+              style={{ color: "#3b82f6", textDecoration: "none" }}
             >
               Sign in
             </Link>
           </p>
         </div>
 
-        <p className="text-center text-xs mt-6" style={{ color: "#1e3a5f" }}>
+        <p
+          style={{
+            textAlign: "center",
+            fontSize: "11px",
+            color: "#1e3a5f",
+            marginTop: "24px",
+          }}
+        >
           7-stage AI middleware pipeline
         </p>
 
