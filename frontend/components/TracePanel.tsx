@@ -228,7 +228,7 @@ export default function TracePanel({ traces, isLoading }: TracePanelProps) {
       </div>
 
       {/* Stage list */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-2">
+      <div style={{ flex: 1, overflowY: "auto", padding: "16px", display: "flex", flexDirection: "column", gap: "8px" }}>
         {traces.length === 0 && !isLoading && (
           <div className="flex flex-col items-center justify-center h-full gap-3">
             <div

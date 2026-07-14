@@ -102,8 +102,8 @@ export default function DemoPage() {
         created_at: new Date().toISOString(),
       });
 
-      // Fallback: if WebSocket missed traces, use HTTP response traces
-      if (liveTraces.length === 0 && data.traces) {
+      clearLiveTraces();
+      if (data.traces) {
         data.traces.forEach((t: TraceItem) => appendLiveTrace(t));
       }
 
@@ -363,12 +363,26 @@ export default function DemoPage() {
               <div style={{
                 maxWidth: "520px",
                 padding: "12px 16px",
-                borderRadius: "16px",
                 fontSize: "13px",
                 lineHeight: "1.6",
                 ...(msg.role === "user"
-                  ? { background: "#2563eb", color: "#fff", borderBottomRightRadius: "4px" }
-                  : { background: "#0d1526", border: "1px solid #1e3a5f", color: "#f0f4ff", borderBottomLeftRadius: "4px" }
+                  ? {
+                      background: "#2563eb",
+                      color: "#fff",
+                      borderTopLeftRadius: "16px",
+                      borderTopRightRadius: "16px",
+                      borderBottomLeftRadius: "16px",
+                      borderBottomRightRadius: "4px",
+                    }
+                  : {
+                      background: "#0d1526",
+                      border: "1px solid #1e3a5f",
+                      color: "#f0f4ff",
+                      borderTopLeftRadius: "16px",
+                      borderTopRightRadius: "16px",
+                      borderBottomLeftRadius: "4px",
+                      borderBottomRightRadius: "16px",
+                    }
                 ),
               }}>
                 {msg.content}
