@@ -37,8 +37,11 @@ async def run_validator_stage(
 
         # Parse JSON response
         import json
-        clean = raw.strip().replace("```json", "").replace("```", "").strip()
-        result = json.loads(clean)
+        import re
+        match = re.search(r"\{[\s\S]*\}", raw)
+        if not match:
+            raise ValueError("No JSON found in validator response")
+        result = json.loads(match.group(0))
 
         toxicity_score = float(result.get("toxicity_score", 0.0))
         issues = result.get("issues", [])

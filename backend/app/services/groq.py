@@ -3,7 +3,13 @@ import asyncio
 from app.core.config import get_settings
 
 settings = get_settings()
-_client = Groq(api_key=settings.GROQ_API_KEY)
+_client = None
+
+def get_groq_client():
+    global _client
+    if _client is None:
+        _client = Groq(api_key=settings.GROQ_API_KEY or "dummy_key_for_startup")
+    return _client
 
 # Available models and what they're good at
 GROQ_MODELS = {
@@ -36,7 +42,7 @@ async def call_groq(
     loop = asyncio.get_event_loop()
     response = await loop.run_in_executor(
         None,
-        lambda: _client.chat.completions.create(
+        lambda: get_groq_client().chat.completions.create(
             model=model,
             messages=messages,
             temperature=0.7,
@@ -61,7 +67,7 @@ async def call_groq_with_history(
     loop = asyncio.get_event_loop()
     response = await loop.run_in_executor(
         None,
-        lambda: _client.chat.completions.create(
+        lambda: get_groq_client().chat.completions.create(
             model=model,
             messages=messages,
             temperature=0.7,

@@ -31,9 +31,16 @@ async def retrieve_similar_messages(
     Uses cosine similarity via pgvector — same pattern as ESG Prism.
     Returns list of {role, content, similarity} dicts.
     """
+    params: dict = {
+        "embedding": str(embedding),
+        "user_id": user_id,
+        "limit": limit,
+    }
+
     exclude_clause = ""
     if exclude_message_id:
-        exclude_clause = f"AND m.id != {exclude_message_id}"
+        exclude_clause = "AND m.id != :exclude_message_id"
+        params["exclude_message_id"] = exclude_message_id
 
     query = text(f"""
         SELECT
@@ -50,14 +57,7 @@ async def retrieve_similar_messages(
         LIMIT :limit
     """)
 
-    result = await db.execute(
-        query,
-        {
-            "embedding": str(embedding),
-            "user_id": user_id,
-            "limit": limit,
-        },
-    )
+    result = await db.execute(query, params)
     rows = result.fetchall()
     return [
         {

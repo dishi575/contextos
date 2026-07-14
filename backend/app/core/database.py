@@ -38,8 +38,8 @@ async def get_db():
 
 
 async def init_db():
-    """Runs on startup — enables pgvector and creates all tables."""
     async with engine.begin() as conn:
-        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        if conn.dialect.name == "postgresql":
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         from app.models import user, session, message, trace  # noqa
         await conn.run_sync(Base.metadata.create_all)
