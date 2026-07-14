@@ -13,6 +13,22 @@ from app.models.message import Message
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 
+async def generate_session_title(message: str) -> str:
+    """Generate a clean, brief 3-5 word title for a new conversation session using Groq."""
+    try:
+        from app.services.groq import call_groq
+        system = (
+            "You are a conversation title generator. Summarize the user's first prompt "
+            "into a very brief 3-5 word title. Do not use quotes, punctuation, or explanations. "
+            "Respond with ONLY the summarized title words."
+        )
+        title, _ = await call_groq(prompt=message, category="simple", system_prompt=system)
+        clean_title = title.strip().replace('"', '').replace("'", "").replace(".", "")
+        return clean_title[:60]
+    except Exception:
+        return message[:60]
+
+
 # --- Schemas ---
 class ChatRequest(BaseModel):
     message: str
@@ -55,9 +71,10 @@ async def chat(
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
     else:
+        title = await generate_session_title(body.message)
         session = Session(
             user_id=current_user.id,
-            title=body.message[:60],
+            title=title,
         )
         db.add(session)
         await db.flush()

@@ -135,7 +135,23 @@ Current message: {cleaned_message}"""
     traces.append(validator_trace)
     await push_trace_event(user.id, validator_trace)
 
-    # --- Stage 7: Write all traces to DB ---
+    # --- Stage 7: Tracer ---
+    t0_trace = time.time()
+    tracer_trace = {
+        "stage": "tracer",
+        "status": "pass",
+        "latency_ms": round((time.time() - t0_trace) * 1000, 2),
+        "tokens_in": None,
+        "tokens_out": None,
+        "model_used": None,
+        "detail": {
+            "traces_written": len(traces) + 1,
+        },
+    }
+    traces.append(tracer_trace)
+    await push_trace_event(user.id, tracer_trace)
+
+    # Write all traces to DB
     await write_traces(db, message_id, traces)
 
     return {

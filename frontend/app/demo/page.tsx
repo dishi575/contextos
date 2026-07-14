@@ -8,6 +8,7 @@ import {
   getSessions,
   getMessages,
   deleteSession,
+  getTraces,
   createTraceSocket,
 } from "@/lib/api";
 import TracePanel from "@/components/TracePanel";
@@ -31,77 +32,117 @@ export default function DemoPage() {
   } = useChatStore();
 
   const [input, setInput] = useState("");
+  const [selectedMessageId, setSelectedMessageId] = useState<number | null>(null);
+  const [provider, setProvider] = useState<string>("auto");
   const wsRef = useRef<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Auto-redirect if not logged in
   useEffect(() => {
     if (!token) router.push("/auth/login");
   }, [token, router]);
 
+  // Load request logs on start
   useEffect(() => {
     if (!token) return;
     getSessions().then((res) => setSessions(res.data));
   }, [token, setSessions]);
 
+  // Establish trace telemetry socket
   useEffect(() => {
     if (!token) return;
-    const ws = createTraceSocket(
-      token,
-      (trace) => appendLiveTrace(trace as TraceItem),
-    );
+    const ws = createTraceSocket(token, (trace) => {
+      appendLiveTrace(trace as TraceItem);
+    });
     wsRef.current = ws;
     return () => ws.close();
   }, [token, appendLiveTrace]);
 
+  // Auto-scroll request logs
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Handle click on past request logs (sessions)
   const handleSelectSession = async (sessionId: number) => {
     setActiveSession(sessionId);
+    clearLiveTraces();
     const res = await getMessages(sessionId);
     setMessages(res.data);
+    
+    // Auto-select the last message response to show its traces
+    const assistantMsgs = res.data.filter((m: { role: string }) => m.role === "assistant");
+    if (assistantMsgs.length > 0) {
+      const lastMsg = assistantMsgs[assistantMsgs.length - 1];
+      setSelectedMessageId(lastMsg.id);
+      loadHistoricalTraces(lastMsg.id);
+    }
   };
 
+  // Load past pipeline trace data
+  const loadHistoricalTraces = async (msgId: number) => {
+    clearLiveTraces();
+    try {
+      const res = await getTraces(msgId);
+      if (res.data) {
+        res.data.forEach((t: TraceItem) => appendLiveTrace(t));
+      }
+    } catch {}
+  };
+
+  // Delete past log session
   const handleDeleteSession = async (e: React.MouseEvent, sessionId: number) => {
     e.stopPropagation();
     await deleteSession(sessionId);
     const res = await getSessions();
     setSessions(res.data);
-    if (activeSessionId === sessionId) setActiveSession(null);
+    if (activeSessionId === sessionId) {
+      setActiveSession(null);
+      clearLiveTraces();
+    }
   };
 
-  const handleSend = async () => {
+  // Execute request payload
+  const handleExecuteRequest = async () => {
     if (!input.trim() || isLoading) return;
-    const userMessage = input.trim();
+    const promptContent = input.trim();
     setInput("");
     clearLiveTraces();
     setLoading(true);
 
+    // Save prompt to state
     addMessage({
       id: Date.now(),
       role: "user",
-      content: userMessage,
+      content: promptContent,
       created_at: new Date().toISOString(),
     });
 
     try {
-      const res = await sendMessage(userMessage, activeSessionId || undefined);
+      const res = await sendMessage(promptContent, activeSessionId || undefined);
       const data = res.data;
 
+      // Set active log session if new
       if (!activeSessionId) {
         setActiveSession(data.session_id);
         const sessRes = await getSessions();
         setSessions(sessRes.data);
+        // Sync full message logs from db to prevent Zustand state wipeout
+        const msgRes = await getMessages(data.session_id);
+        setMessages(msgRes.data);
+      } else {
+        // Add response message
+        addMessage({
+          id: data.message_id + 1,
+          role: "assistant",
+          content: data.response,
+          created_at: new Date().toISOString(),
+        });
       }
 
-      addMessage({
-        id: data.message_id + 1,
-        role: "assistant",
-        content: data.response,
-        created_at: new Date().toISOString(),
-      });
+      setSelectedMessageId(data.message_id + 1);
 
+      // Fallback: populate traces if socket missed them
       clearLiveTraces();
       if (data.traces) {
         data.traces.forEach((t: TraceItem) => appendLiveTrace(t));
@@ -112,7 +153,7 @@ export default function DemoPage() {
       addMessage({
         id: Date.now(),
         role: "assistant",
-        content: "Something went wrong. Please try again.",
+        content: "Error: Middleware execution timeout. Please check backend connection.",
         created_at: new Date().toISOString(),
       });
       setLoading(false);
@@ -122,381 +163,275 @@ export default function DemoPage() {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      handleExecuteRequest();
     }
   };
 
   return (
-    <div style={{
-      display: "flex",
-      height: "100vh",
-      overflow: "hidden",
-      background: "#0a0f1e",
-    }}>
-
-      {/* Sidebar */}
-      <div style={{
-        width: "240px",
-        flexShrink: 0,
-        display: "flex",
-        flexDirection: "column",
-        background: "#0d1526",
-        borderRight: "1px solid #1e3a5f",
-      }}>
-        {/* Logo */}
-        <div style={{
-          padding: "16px 20px",
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-          borderBottom: "1px solid #1e3a5f",
-        }}>
-          <div style={{
-            width: "28px", height: "28px",
-            borderRadius: "8px",
-            background: "#2563eb",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            color: "#fff", fontWeight: "700", fontSize: "12px",
-            flexShrink: 0,
-          }}>C</div>
-          <span style={{ color: "#f0f4ff", fontWeight: "600", fontSize: "14px" }}>
-            ContextOS
-          </span>
+    <div className="flex h-screen overflow-hidden bg-[#05070c] text-slate-100 font-sans">
+      
+      {/* 1. Left Sidebar: Execution Logs History */}
+      <div className="w-60 shrink-0 flex flex-col bg-[#070b13] border-r border-slate-800/80">
+        
+        {/* Console Brand Logo */}
+        <div className="px-5 py-4 flex items-center gap-2.5 border-b border-slate-800/80 bg-slate-950/20 select-none">
+          <div className="w-7 h-7 rounded-lg bg-blue-600/90 shadow-[0_0_10px_rgba(37,99,235,0.45)] flex items-center justify-center text-white font-extrabold text-xs">
+            C
+          </div>
+          <div className="flex flex-col">
+            <span className="text-sm font-bold text-slate-200 tracking-wide leading-tight">
+              ContextOS
+            </span>
+            <span className="text-[9px] font-mono text-slate-500 uppercase tracking-widest leading-none mt-0.5">
+              TELEMETRY CORE
+            </span>
+          </div>
         </div>
 
-        {/* New chat */}
-        <div style={{ padding: "12px" }}>
+        {/* Sandbox Actions */}
+        <div className="p-3">
           <button
-            onClick={() => { setActiveSession(null); clearLiveTraces(); }}
-            style={{
-              width: "100%",
-              background: "#111d35",
-              border: "1px solid #1e3a5f",
-              borderRadius: "8px",
-              padding: "8px 12px",
-              color: "#f0f4ff",
-              fontSize: "13px",
-              fontWeight: "500",
-              textAlign: "left",
-              cursor: "pointer",
+            onClick={() => {
+              setActiveSession(null);
+              clearLiveTraces();
+              setMessages([]);
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#2563eb")}
-            onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#1e3a5f")}
+            className="w-full bg-slate-900/60 hover:bg-slate-900 border border-slate-800 hover:border-blue-600/60 rounded-lg px-3 py-2 text-xs font-semibold text-slate-200 text-left transition-all duration-150 flex items-center gap-2"
           >
-            + New conversation
+            <span>+</span> New sandbox trace
           </button>
         </div>
 
-        {/* Sessions */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "0 12px 12px" }}>
-          {sessions.map((session) => (
-            <div
-              key={session.id}
-              onClick={() => handleSelectSession(session.id)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "8px 12px",
-                borderRadius: "8px",
-                cursor: "pointer",
-                marginBottom: "2px",
-                background: activeSessionId === session.id ? "#111d35" : "transparent",
-                border: activeSessionId === session.id ? "1px solid #1e3a5f" : "1px solid transparent",
-              }}
-              onMouseEnter={(e) => {
-                const del = e.currentTarget.querySelector(".del-btn") as HTMLElement;
-                if (del) del.style.opacity = "1";
-              }}
-              onMouseLeave={(e) => {
-                const del = e.currentTarget.querySelector(".del-btn") as HTMLElement;
-                if (del) del.style.opacity = "0";
-              }}
-            >
-              <span style={{
-                fontSize: "12px",
-                color: activeSessionId === session.id ? "#f0f4ff" : "#6b8cba",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-                flex: 1,
-              }}>
-                {session.title || "Untitled"}
-              </span>
-              <button
-                className="del-btn"
-                onClick={(e) => handleDeleteSession(e, session.id)}
-                style={{
-                  opacity: 0,
-                  color: "#ef4444",
-                  fontSize: "11px",
-                  marginLeft: "8px",
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  transition: "opacity 0.15s",
-                }}
-              >✕</button>
-            </div>
-          ))}
+        {/* Historical Logs List */}
+        <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-1 scrollbar-thin">
+          <span className="px-2 py-1 text-[9px] font-mono font-bold text-slate-500 uppercase tracking-widest block mb-1.5 select-none">
+            Recent Debug Traces
+          </span>
+          {sessions.length === 0 ? (
+            <span className="px-2 py-4 text-[10px] text-slate-500 italic block">
+              No previous runs recorded
+            </span>
+          ) : (
+            sessions.map((session) => (
+              <div
+                key={session.id}
+                onClick={() => handleSelectSession(session.id)}
+                className={`group flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition-all duration-150 border ${
+                  activeSessionId === session.id
+                    ? "bg-[#10192e] border-slate-800 text-blue-400"
+                    : "border-transparent text-slate-400 hover:bg-slate-900/40 hover:text-slate-200"
+                }`}
+              >
+                <span className="text-xs truncate font-mono flex-1">
+                  {session.title || "Untitled"}
+                </span>
+                <button
+                  onClick={(e) => handleDeleteSession(e, session.id)}
+                  className="opacity-0 group-hover:opacity-100 text-rose-500 hover:text-rose-400 text-xs px-1 bg-transparent border-none cursor-pointer transition-opacity duration-150"
+                >
+                  ✕
+                </button>
+              </div>
+            ))
+          )}
         </div>
 
-        {/* User */}
-        <div style={{
-          padding: "12px 16px",
-          borderTop: "1px solid #1e3a5f",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}>
-          <span style={{
-            fontSize: "11px",
-            color: "#6b8cba",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            flex: 1,
-          }}>
-            {user?.email}
-          </span>
+        {/* Console Operator Profile */}
+        <div className="p-4 border-t border-slate-800/80 bg-slate-950/20 flex items-center justify-between text-xs">
+          <div className="flex flex-col truncate flex-1 pr-2">
+            <span className="text-[10px] font-mono text-slate-500">OPERATOR_ID</span>
+            <span className="text-[11px] text-slate-400 truncate">{user?.email}</span>
+          </div>
           <button
-            onClick={() => { logout(); router.push("/auth/login"); }}
-            style={{
-              fontSize: "11px",
-              color: "#ef4444",
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              marginLeft: "8px",
+            onClick={() => {
+              logout();
+              router.push("/auth/login");
             }}
-          >Sign out</button>
+            className="text-rose-500 hover:text-rose-400 text-[10px] uppercase font-mono tracking-wider font-bold shrink-0"
+          >
+            Exit
+          </button>
         </div>
       </div>
 
-      {/* Chat area */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-
-        {/* Header */}
-        <div style={{
-          padding: "16px 24px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          borderBottom: "1px solid #1e3a5f",
-        }}>
-          <div>
-            <h1 style={{ color: "#f0f4ff", fontSize: "14px", fontWeight: "600", margin: 0 }}>
-              {activeSessionId ? "Conversation" : "New conversation"}
-            </h1>
-            <p style={{ color: "#6b8cba", fontSize: "12px", margin: "2px 0 0" }}>
-              Powered by ContextOS middleware pipeline
-            </p>
+      {/* 2. Middle Panel: Sandbox API Tracer & Request Console */}
+      <div className="flex-1 flex flex-col overflow-hidden bg-[#05070c]">
+        
+        {/* Navigation & Telemetry Health */}
+        <div className="px-6 py-4 flex items-center justify-between border-b border-slate-800/80 bg-[#070b13]/40 shrink-0 select-none">
+          <div className="flex items-center gap-4">
+            <div>
+              <h1 className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                {activeSessionId ? `Telemetry Session: LOG_${activeSessionId}` : "API Request Playground"}
+              </h1>
+              <p className="text-[10px] font-mono text-slate-500 mt-0.5">
+                Target endpoint: POST /api/v1/chat
+              </p>
+            </div>
+            <div className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-950/20 border border-emerald-800/30 font-mono text-[9px] text-emerald-400 font-bold">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              API GATEWAY: ONLINE
+            </div>
           </div>
           <button
             onClick={() => router.push("/dashboard")}
-            style={{
-              fontSize: "12px",
-              padding: "6px 12px",
-              borderRadius: "8px",
-              background: "#111d35",
-              border: "1px solid #1e3a5f",
-              color: "#6b8cba",
-              cursor: "pointer",
-            }}
-          >Dashboard →</button>
+            className="text-[10px] font-mono font-bold px-3 py-1.5 rounded-lg border border-slate-800 bg-[#0d1322] hover:bg-[#11192e] text-slate-300 hover:border-slate-700 transition-all duration-150"
+          >
+            CONFIGURE POLICY &rarr;
+          </button>
         </div>
 
-        {/* Messages */}
-        <div style={{
-          flex: 1,
-          overflowY: "auto",
-          padding: "24px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "16px",
-        }}>
+        {/* Request Shell Area */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          
           {messages.length === 0 && (
-            <div style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              height: "100%",
-              gap: "16px",
-            }}>
-              <div style={{
-                width: "56px", height: "56px",
-                borderRadius: "16px",
-                background: "#0d1526",
-                border: "1px solid #1e3a5f",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: "24px",
-              }}>⚡</div>
-              <div style={{ textAlign: "center" }}>
-                <p style={{ color: "#f0f4ff", fontSize: "14px", fontWeight: "500", margin: "0 0 4px" }}>
-                  ContextOS is ready
-                </p>
-                <p style={{ color: "#6b8cba", fontSize: "12px", margin: 0 }}>
-                  Send a message — watch the pipeline trace on the right
-                </p>
+            <div className="flex flex-col items-center justify-center h-[260px] border border-dashed border-slate-800/80 rounded-xl px-6 py-10 bg-slate-950/5">
+              <div className="w-12 h-12 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-xl mb-4 shadow-sm select-none">
+                ⚙️
               </div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", justifyContent: "center" }}>
-                {["PII Guard", "Semantic Memory", "Token Compression", "Model Routing", "Toxicity Validation"].map((f) => (
-                  <span key={f} style={{
-                    fontSize: "11px",
-                    padding: "4px 12px",
-                    borderRadius: "100px",
-                    background: "#0d1526",
-                    border: "1px solid #1e3a5f",
-                    color: "#6b8cba",
-                  }}>{f}</span>
+              <h3 className="text-xs font-bold text-slate-300 tracking-wide uppercase mb-1">
+                Sandbox Playground Ready
+              </h3>
+              <p className="text-[10px] text-slate-500 text-center max-w-sm mb-4 leading-normal">
+                Submit raw prompts to evaluate your intelligent middleware settings. You can track latency, toxicity, and compression dynamically.
+              </p>
+              <div className="flex flex-wrap gap-1.5 justify-center">
+                {["PII Shield", "Semantic Context", "Lossless Compressor", "Dynamic Selector", "Toxicity Judge"].map((f) => (
+                  <span
+                    key={f}
+                    className="font-mono text-[9px] px-2.5 py-0.5 rounded border border-slate-800 text-slate-400 bg-slate-900/35"
+                  >
+                    {f}
+                  </span>
                 ))}
               </div>
             </div>
           )}
 
-          {messages.map((msg) => (
-            <div key={msg.id} style={{
-              display: "flex",
-              justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
-            }}>
-              <div style={{
-                maxWidth: "520px",
-                padding: "12px 16px",
-                fontSize: "13px",
-                lineHeight: "1.6",
-                ...(msg.role === "user"
-                  ? {
-                      background: "#2563eb",
-                      color: "#fff",
-                      borderTopLeftRadius: "16px",
-                      borderTopRightRadius: "16px",
-                      borderBottomLeftRadius: "16px",
-                      borderBottomRightRadius: "4px",
-                    }
-                  : {
-                      background: "#0d1526",
-                      border: "1px solid #1e3a5f",
-                      color: "#f0f4ff",
-                      borderTopLeftRadius: "16px",
-                      borderTopRightRadius: "16px",
-                      borderBottomLeftRadius: "4px",
-                      borderBottomRightRadius: "16px",
-                    }
-                ),
-              }}>
-                {msg.content}
-              </div>
-            </div>
-          ))}
+          {/* Render request logs */}
+          <div className="space-y-4">
+            {messages.map((msg) => {
+              const isUser = msg.role === "user";
+              
+              if (isUser) {
+                return (
+                  <div key={msg.id} className="space-y-1.5">
+                    <div className="flex items-center gap-2 select-none font-mono text-[9px] text-slate-500">
+                      <span>POST /api/chat</span>
+                      <span>•</span>
+                      <span>{new Date(msg.created_at).toLocaleTimeString()}</span>
+                    </div>
+                    <div className="rounded-lg border border-slate-800/80 bg-[#090e17] px-4 py-3 font-mono text-xs text-sky-200">
+                      <span className="text-slate-500 select-none mr-2">payload.prompt:</span>
+                      {msg.content}
+                    </div>
+                  </div>
+                );
+              }
 
-          {isLoading && (
-            <div style={{ display: "flex", justifyContent: "flex-start" }}>
-              <div style={{
-                padding: "12px 16px",
-                borderRadius: "16px",
-                borderBottomLeftRadius: "4px",
-                background: "#0d1526",
-                border: "1px solid #1e3a5f",
-                display: "flex",
-                gap: "4px",
-                alignItems: "center",
-              }}>
-                {[0, 1, 2].map((i) => (
-                  <div key={i} style={{
-                    width: "6px", height: "6px",
-                    borderRadius: "50%",
-                    background: "#2563eb",
-                    animation: `bounce 1s ease-in-out ${i * 0.15}s infinite`,
-                  }} />
-                ))}
-              </div>
-            </div>
-          )}
+              // Assistant (Middleware telemetry logs)
+              const isLastAssistant = msg.id === selectedMessageId;
+              const hasBlocked = msg.content.includes("blocked");
+              
+              return (
+                <div key={msg.id} className="space-y-1.5">
+                  <div className="flex items-center justify-between select-none font-mono text-[9px] text-slate-500">
+                    <div className="flex items-center gap-2">
+                      <span className={hasBlocked ? "text-rose-500 font-bold" : "text-emerald-500 font-bold"}>
+                        {hasBlocked ? "403 Forbidden" : "200 OK"}
+                      </span>
+                      <span>•</span>
+                      <span>RESPONSE_BODY</span>
+                    </div>
+                    {isLastAssistant && (
+                      <span className="text-slate-500 uppercase tracking-widest text-[8px] border border-slate-800/80 px-1.5 rounded animate-pulse bg-slate-900/20 select-none">
+                        Active Inspect
+                      </span>
+                    )}
+                  </div>
+                  <div className={`rounded-lg border font-mono text-xs p-4 leading-relaxed ${
+                    hasBlocked 
+                      ? "bg-rose-950/10 border-rose-900/35 text-rose-300"
+                      : "bg-[#03060c] border-slate-900 text-slate-300"
+                  }`}>
+                    {msg.content}
+                  </div>
+                </div>
+              );
+            })}
 
-          <div ref={messagesEndRef} />
+            {isLoading && (
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2 select-none font-mono text-[9px] text-slate-500">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-ping" />
+                  <span>TRANSACTION IN PROGRESS</span>
+                </div>
+                <div className="rounded-lg border border-slate-800 bg-[#03060c] px-4 py-3 font-mono text-xs text-slate-500 italic flex items-center gap-2">
+                  <span className="animate-spin text-blue-500">⚙️</span>
+                  <span>Executing middleware pipeline checks...</span>
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
         </div>
 
-        {/* Input */}
-        <div style={{ padding: "16px 24px", borderTop: "1px solid #1e3a5f" }}>
-          <div style={{
-            display: "flex",
-            gap: "12px",
-            alignItems: "flex-end",
-            background: "#0d1526",
-            border: "1px solid #1e3a5f",
-            borderRadius: "12px",
-            padding: "12px 16px",
-          }}>
-            <textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Send a message — Enter to send, Shift+Enter for new line"
-              rows={1}
-              style={{
-                flex: 1,
-                resize: "none",
-                outline: "none",
-                background: "transparent",
-                color: "#f0f4ff",
-                fontSize: "13px",
-                lineHeight: "1.5",
-                border: "none",
-                maxHeight: "120px",
-                fontFamily: "inherit",
-              }}
-            />
-            <button
-              onClick={handleSend}
-              disabled={isLoading || !input.trim()}
-              style={{
-                flexShrink: 0,
-                width: "32px", height: "32px",
-                borderRadius: "8px",
-                background: "#2563eb",
-                border: "none",
-                cursor: isLoading || !input.trim() ? "not-allowed" : "pointer",
-                opacity: isLoading || !input.trim() ? 0.4 : 1,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-              onMouseEnter={(e) => {
-                if (!isLoading && input.trim())
-                  e.currentTarget.style.background = "#1d4ed8";
-              }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "#2563eb"; }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="22" y1="2" x2="11" y2="13" />
-                <polygon points="22 2 15 22 11 13 2 9 22 2" />
-              </svg>
-            </button>
+        {/* Input Sandbox Prompt Terminal */}
+        <div className="p-6 border-t border-slate-800/80 bg-[#070b13]/40 shrink-0">
+          <div className="border border-slate-800 rounded-xl bg-slate-950/60 p-4 space-y-4 transition-all duration-150 focus-within:border-blue-600/40">
+            
+            {/* Payload Terminal Input */}
+            <div className="flex items-start gap-3">
+              <span className="font-mono text-xs text-slate-500 select-none mt-1">&gt;</span>
+              <textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Enter prompt request..."
+                rows={2}
+                className="flex-1 resize-none outline-none bg-transparent text-slate-200 placeholder-slate-600 font-mono text-xs leading-normal border-none focus:ring-0"
+              />
+            </div>
+
+            {/* Sandbox Inline Policy Constraints */}
+            <div className="pt-3 border-t border-slate-850 flex items-center justify-between select-none">
+              <div className="flex items-center gap-2 font-mono text-[9px] text-slate-500">
+                <span className="text-slate-600">PROVIDER:</span>
+                <select
+                  value={provider}
+                  onChange={(e) => setProvider(e.target.value)}
+                  className="bg-[#0b101f] border border-slate-800 text-slate-400 rounded px-1.5 py-0.5 text-[9px] cursor-pointer outline-none focus:border-slate-700 font-mono"
+                >
+                  <option value="auto">Auto Router</option>
+                  <option value="groq">Groq Llama</option>
+                  <option value="gemini">Gemini Flash</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] text-slate-500 font-mono hidden sm:inline">
+                  Press Enter to Execute
+                </span>
+                <button
+                  onClick={handleExecuteRequest}
+                  disabled={isLoading || !input.trim()}
+                  className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:hover:bg-blue-600 text-white text-[10px] font-mono tracking-wider font-extrabold px-3 py-1.5 rounded shadow-[0_0_8px_rgba(37,99,235,0.3)] transition-all duration-150"
+                >
+                  RUN REQUEST
+                </button>
+              </div>
+            </div>
           </div>
-          <p style={{ textAlign: "center", fontSize: "11px", color: "#1e3a5f", margin: "8px 0 0" }}>
-            All requests processed through 7-stage middleware pipeline
+          <p className="text-center text-[9px] font-mono text-slate-600 mt-3 select-none">
+            TELEMETRY RELEASES ACTIVE SESSIONS SECURELY TO THE MIDDLEWARE DATABASE
           </p>
         </div>
       </div>
 
-      {/* Trace panel */}
-      <div style={{
-        width: "300px",
-        flexShrink: 0,
-        background: "#0d1526",
-        borderLeft: "1px solid #1e3a5f",
-      }}>
+      {/* 3. Right Panel: Real-time Pipeline Telemetry Trace Panel */}
+      <div className="w-[320px] shrink-0 border-l border-slate-800/80">
         <TracePanel traces={liveTraces} isLoading={isLoading} />
       </div>
-
-      <style>{`
-        @keyframes bounce {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-4px); }
-        }
-      `}</style>
     </div>
   );
 }

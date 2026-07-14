@@ -4,13 +4,13 @@ import { useEffect, useRef } from "react";
 import { TraceItem } from "@/lib/store";
 
 const STAGE_LABELS: Record<string, string> = {
-  guard: "PII Guard",
-  memory: "Memory Retrieval",
+  guard: "PII & Injection Guard",
+  memory: "Vector Memory Retriever",
   compressor: "Context Compressor",
-  router: "Model Router",
-  llm: "LLM Call",
-  validator: "Output Validator",
-  tracer: "Trace Logger",
+  router: "Model Intelligent Router",
+  llm: "LLM Execution Call",
+  validator: "Output Safety Judge",
+  tracer: "Trace Logger Writer",
 };
 
 const STAGE_ORDER = [
@@ -25,21 +25,24 @@ const STAGE_ORDER = [
 
 const STATUS_CONFIG = {
   pass: {
-    color: "#10b981",
-    bg: "rgba(16,185,129,0.08)",
-    border: "rgba(16,185,129,0.25)",
+    color: "text-emerald-400",
+    dot: "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]",
+    bg: "bg-emerald-950/20",
+    border: "border-emerald-800/30",
     label: "PASS",
   },
   warn: {
-    color: "#f59e0b",
-    bg: "rgba(245,158,11,0.08)",
-    border: "rgba(245,158,11,0.25)",
+    color: "text-amber-400",
+    dot: "bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.5)]",
+    bg: "bg-amber-950/20",
+    border: "border-amber-800/30",
     label: "WARN",
   },
   block: {
-    color: "#ef4444",
-    bg: "rgba(239,68,68,0.08)",
-    border: "rgba(239,68,68,0.25)",
+    color: "text-rose-400",
+    dot: "bg-rose-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]",
+    bg: "bg-rose-950/25",
+    border: "border-rose-900/40",
     label: "BLOCK",
   },
 };
@@ -49,71 +52,54 @@ interface TracePanelProps {
   isLoading: boolean;
 }
 
-function StageRow({ trace }: { trace: TraceItem }) {
+function StageRow({ trace, index }: { trace: TraceItem; index: number }) {
   const config = STATUS_CONFIG[trace.status] || STATUS_CONFIG.pass;
 
   return (
-    <div style={{
-      borderRadius: "10px",
-      padding: "12px 14px",
-      background: config.bg,
-      border: `1px solid ${config.border}`,
-    }}>
+    <div className={`group relative rounded-lg p-3 border transition-all duration-200 hover:border-slate-700/80 ${config.bg} ${config.border}`}>
+      
+      {/* Connector line dot */}
+      <div className="absolute -left-[17px] top-[18px] z-10 flex h-3 h-3 w-3 items-center justify-center">
+        <span className={`h-2 w-2 rounded-full ${config.dot}`} />
+      </div>
+
       {/* Header */}
-      <div style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        marginBottom: "6px",
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <div style={{
-            width: "7px", height: "7px",
-            borderRadius: "50%",
-            background: config.color,
-            flexShrink: 0,
-          }} />
-          <span style={{ fontSize: "13px", fontWeight: "500", color: "#f0f4ff" }}>
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] font-mono text-slate-500 font-bold">0{index + 1}</span>
+          <span className="text-xs font-semibold text-slate-200 tracking-tight">
             {STAGE_LABELS[trace.stage] || trace.stage}
           </span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <div className="flex items-center gap-2">
           {trace.latency_ms !== null && (
-            <span style={{ fontSize: "11px", color: "#6b8cba" }}>
+            <span className="text-[10px] font-mono text-slate-400">
               {trace.latency_ms}ms
             </span>
           )}
-          <span style={{
-            fontSize: "10px",
-            fontFamily: "monospace",
-            fontWeight: "700",
-            padding: "2px 6px",
-            borderRadius: "4px",
-            color: config.color,
-            background: config.bg,
-            border: `1px solid ${config.border}`,
-          }}>
+          <span className={`text-[9px] font-mono font-extrabold px-1.5 py-0.5 rounded border ${config.border} ${config.color} bg-black/35`}>
             {config.label}
           </span>
         </div>
       </div>
 
-      {/* Details */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+      {/* Details Box */}
+      <div className="font-mono text-[10px] text-slate-400 flex flex-col gap-1 pl-3 border-l border-slate-800/60 mt-1.5">
         {trace.model_used && (
-          <span style={{ fontSize: "11px", color: "#6b8cba" }}>
-            <span style={{ color: "#2d4a6e" }}>model </span>
-            {trace.model_used}
-          </span>
+          <div>
+            <span className="text-slate-500 font-bold">model:</span>{" "}
+            <span className="text-indigo-300">{trace.model_used}</span>
+          </div>
         )}
         {trace.tokens_in !== null && trace.tokens_out !== null && trace.tokens_in > 0 && (
-          <span style={{ fontSize: "11px", color: "#6b8cba" }}>
-            <span style={{ color: "#2d4a6e" }}>tokens </span>
-            {trace.tokens_in} → {trace.tokens_out}
+          <div>
+            <span className="text-slate-500 font-bold">tokens:</span>{" "}
+            <span className="text-slate-300">{trace.tokens_in}</span> &rarr;{" "}
+            <span className="text-slate-300">{trace.tokens_out}</span>
             {trace.tokens_in > trace.tokens_out && (
-              <span style={{ color: "#10b981" }}> (-{trace.tokens_in - trace.tokens_out} saved)</span>
+              <span className="text-emerald-400 font-bold"> (-{trace.tokens_in - trace.tokens_out} saved)</span>
             )}
-          </span>
+          </div>
         )}
         {(() => {
           const d = trace.detail as Record<string, unknown> | null;
@@ -121,35 +107,43 @@ function StageRow({ trace }: { trace: TraceItem }) {
           return (
             <>
               {d.category && (
-                <span style={{ fontSize: "11px", color: "#6b8cba" }}>
-                  <span style={{ color: "#2d4a6e" }}>type </span>
-                  {String(d.category)}
-                </span>
+                <div>
+                  <span className="text-slate-500 font-bold">route_class:</span>{" "}
+                  <span className="text-teal-300">{String(d.category)}</span>
+                </div>
               )}
               {Number(d.chunks_retrieved) > 0 && (
-                <span style={{ fontSize: "11px", color: "#6b8cba" }}>
-                  <span style={{ color: "#2d4a6e" }}>chunks </span>
-                  {Number(d.chunks_retrieved)}
-                  <span style={{ color: "#3b82f6" }}>
-                    {" "}({(Number(d.top_similarity || 0) * 100).toFixed(0)}% match)
+                <div>
+                  <span className="text-slate-500 font-bold">vector_match:</span>{" "}
+                  <span className="text-sky-300">{Number(d.chunks_retrieved)} chunks</span>
+                  <span className="text-blue-400 font-semibold">
+                    {" "}({(Number(d.top_similarity || 0) * 100).toFixed(0)}% sim)
                   </span>
-                </span>
+                </div>
               )}
               {Array.isArray(d.pii_found) && d.pii_found.length > 0 && (
-                <span style={{ fontSize: "11px", color: "#f59e0b" }}>
-                  PII detected: {(d.pii_found as string[]).join(", ")}
-                </span>
+                <div className="text-amber-400 font-semibold animate-pulse">
+                  <span className="text-slate-500 font-bold">pii_redacted:</span>{" "}
+                  {(d.pii_found as string[]).join(", ")}
+                </div>
               )}
               {d.injection_detected && (
-                <span style={{ fontSize: "11px", color: "#ef4444" }}>
-                  ⚠ Injection attempt detected
-                </span>
+                <div className="text-rose-400 font-bold border-l-2 border-rose-500 pl-1.5 py-0.5 my-0.5 bg-rose-500/5">
+                  ⚠️ INJECTION SHIELD ACTIVATED
+                </div>
               )}
               {Number(d.toxicity_score) > 0 && (
-                <span style={{ fontSize: "11px", color: "#f59e0b" }}>
-                  <span style={{ color: "#2d4a6e" }}>toxicity </span>
-                  {(Number(d.toxicity_score) * 100).toFixed(0)}%
-                </span>
+                <div>
+                  <span className="text-slate-500 font-bold">toxicity:</span>{" "}
+                  <span className={Number(d.toxicity_score) > 0.5 ? "text-rose-400 font-semibold" : "text-amber-300"}>
+                    {(Number(d.toxicity_score) * 100).toFixed(0)}%
+                  </span>
+                </div>
+              )}
+              {d.explanation && (
+                <div className="text-[9px] text-slate-500 italic mt-0.5 max-w-full leading-normal">
+                  &ldquo;{String(d.explanation)}&rdquo;
+                </div>
               )}
             </>
           );
@@ -161,24 +155,21 @@ function StageRow({ trace }: { trace: TraceItem }) {
 
 function PendingStage({ stage }: { stage: string }) {
   return (
-    <div style={{
-      borderRadius: "10px",
-      padding: "12px 14px",
-      background: "rgba(30,58,95,0.15)",
-      border: "1px solid #1e3a5f",
-      display: "flex",
-      alignItems: "center",
-      gap: "8px",
-    }}>
-      <div style={{
-        width: "7px", height: "7px",
-        borderRadius: "50%",
-        background: "#1e3a5f",
-        flexShrink: 0,
-        animation: "pulse 2s ease-in-out infinite",
-      }} />
-      <span style={{ fontSize: "13px", color: "#2d4a6e" }}>
-        {STAGE_LABELS[stage] || stage}
+    <div className="relative rounded-lg p-3 border border-slate-800/40 bg-slate-900/10 flex items-center justify-between transition-all duration-150">
+      
+      {/* Connector line dot */}
+      <div className="absolute -left-[17px] top-[18px] z-10 flex h-3 h-3 w-3 items-center justify-center">
+        <span className="h-2 w-2 rounded-full bg-slate-800 animate-pulse border border-slate-700" />
+      </div>
+
+      <div className="flex items-center gap-2">
+        <span className="h-1.5 w-1.5 rounded-full bg-slate-700 animate-ping" />
+        <span className="text-xs font-medium text-slate-600">
+          {STAGE_LABELS[stage] || stage}
+        </span>
+      </div>
+      <span className="text-[8px] font-mono text-slate-700 uppercase tracking-widest animate-pulse">
+        AWAITING...
       </span>
     </div>
   );
@@ -202,112 +193,70 @@ export default function TracePanel({ traces, isLoading }: TracePanelProps) {
   const totalLatency = traces.reduce((sum, t) => sum + (t.latency_ms || 0), 0);
 
   return (
-    <div style={{
-      display: "flex",
-      flexDirection: "column",
-      height: "100%",
-    }}>
+    <div className="flex flex-col h-full bg-[#070b13] select-none">
+      
       {/* Header */}
-      <div style={{
-        padding: "16px 20px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        borderBottom: "1px solid #1e3a5f",
-        flexShrink: 0,
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <div style={{
-            width: "8px", height: "8px",
-            borderRadius: "50%",
-            background: isLoading ? "#f59e0b" : traces.length > 0 ? "#10b981" : "#1e3a5f",
-            boxShadow: isLoading ? "0 0 6px #f59e0b" : "none",
-          }} />
-          <span style={{ fontSize: "13px", fontWeight: "600", color: "#f0f4ff" }}>
-            Pipeline Trace
+      <div className="px-4 py-3 flex items-center justify-between border-b border-slate-800/80 bg-slate-950/20 shrink-0">
+        <div className="flex items-center gap-2">
+          <span className={`h-2 w-2 rounded-full transition-all duration-300 ${
+            isLoading ? "bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)] animate-pulse" : 
+            traces.length > 0 ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]" : "bg-slate-700"
+          }`} />
+          <span className="text-xs font-bold text-slate-200 tracking-wider uppercase">
+            Middleware Tracer
           </span>
         </div>
-        <span style={{ fontSize: "11px", color: "#6b8cba" }}>
-          {traces.length}/7 stages
+        <span className="text-[10px] font-mono text-slate-500 font-semibold bg-slate-900/40 px-2 py-0.5 rounded-full border border-slate-800/60">
+          {traces.length}/7 completed
         </span>
       </div>
 
-      {/* Stages */}
-      <div style={{
-        flex: 1,
-        overflowY: "auto",
-        padding: "12px",
-        display: "flex",
-        flexDirection: "column",
-        gap: "6px",
-      }}>
-        {traces.length === 0 && !isLoading && (
-          <div style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            height: "100%",
-            gap: "12px",
-          }}>
-            <div style={{
-              width: "44px", height: "44px",
-              borderRadius: "12px",
-              background: "#0d1526",
-              border: "1px solid #1e3a5f",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "20px",
-            }}>⚡</div>
-            <p style={{
-              fontSize: "12px",
-              color: "#6b8cba",
-              textAlign: "center",
-              margin: 0,
-              lineHeight: "1.6",
-            }}>
-              Send a message to watch<br />the pipeline execute
-            </p>
-          </div>
-        )}
+      {/* Stages List */}
+      <div className="flex-1 overflow-y-auto px-4 py-4 relative">
+        
+        {/* Timeline connecting vertical track */}
+        <div className="absolute left-[13px] top-6 bottom-6 w-[1px] bg-slate-800/80 z-0" />
 
-        {traces.map((trace, i) => (
-          <StageRow key={`${trace.stage}-${i}`} trace={trace} />
-        ))}
+        <div className="flex flex-col gap-4 relative z-10 pl-3">
+          {traces.length === 0 && !isLoading && (
+            <div className="flex flex-col items-center justify-center h-[350px] gap-3 text-center pr-3">
+              <div className="w-10 h-10 rounded-xl bg-slate-900/60 border border-slate-800/80 flex items-center justify-center text-lg shadow-sm">
+                🔍
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-300 mb-1">
+                  Trace Analyzer Idle
+                </p>
+                <p className="text-[10px] text-slate-500 leading-normal max-w-[200px]">
+                  Submit an API request in the playground to begin real-time telemetry tracing.
+                </p>
+              </div>
+            </div>
+          )}
 
-        {pendingStages.map((stage) => (
-          <PendingStage key={stage} stage={stage} />
-        ))}
+          {traces.map((trace, i) => (
+            <StageRow key={`${trace.stage}-${i}`} trace={trace} index={i} />
+          ))}
 
-        <div ref={bottomRef} />
+          {pendingStages.map((stage) => (
+            <PendingStage key={stage} stage={stage} />
+          ))}
+
+          <div ref={bottomRef} />
+        </div>
       </div>
 
-      {/* Footer */}
+      {/* Summary Footer */}
       {traces.length > 0 && (
-        <div style={{
-          padding: "10px 16px",
-          borderTop: "1px solid #1e3a5f",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          flexShrink: 0,
-        }}>
-          <span style={{ fontSize: "11px", color: tokensSaved > 0 ? "#10b981" : "#6b8cba" }}>
-            {tokensSaved > 0 ? `${tokensSaved} tokens saved` : "no compression needed"}
+        <div className="px-4 py-2.5 border-t border-slate-800/80 bg-slate-950/40 flex items-center justify-between shrink-0 font-mono text-[10px]">
+          <span className={`font-semibold ${tokensSaved > 0 ? "text-emerald-400" : "text-slate-500"}`}>
+            {tokensSaved > 0 ? `+${tokensSaved} tokens saved` : "0% compression"}
           </span>
-          <span style={{ fontSize: "11px", color: "#6b8cba" }}>
-            {totalLatency.toFixed(0)}ms total
+          <span className="text-slate-400 font-bold">
+            {totalLatency.toFixed(0)}ms latency
           </span>
         </div>
       )}
-
-      <style>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.3; }
-        }
-      `}</style>
     </div>
   );
 }
