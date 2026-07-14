@@ -34,18 +34,15 @@ export default function DemoPage() {
   const wsRef = useRef<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Redirect if not logged in
   useEffect(() => {
     if (!token) router.push("/auth/login");
   }, [token, router]);
 
-  // Load sessions on mount
   useEffect(() => {
     if (!token) return;
     getSessions().then((res) => setSessions(res.data));
   }, [token, setSessions]);
 
-  // Connect WebSocket
   useEffect(() => {
     if (!token) return;
     const ws = createTraceSocket(
@@ -56,7 +53,6 @@ export default function DemoPage() {
     return () => ws.close();
   }, [token, appendLiveTrace]);
 
-  // Auto scroll messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -67,28 +63,21 @@ export default function DemoPage() {
     setMessages(res.data);
   };
 
-  const handleDeleteSession = async (
-    e: React.MouseEvent,
-    sessionId: number
-  ) => {
+  const handleDeleteSession = async (e: React.MouseEvent, sessionId: number) => {
     e.stopPropagation();
     await deleteSession(sessionId);
     const res = await getSessions();
     setSessions(res.data);
-    if (activeSessionId === sessionId) {
-      setActiveSession(null);
-    }
+    if (activeSessionId === sessionId) setActiveSession(null);
   };
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
-
     const userMessage = input.trim();
     setInput("");
     clearLiveTraces();
     setLoading(true);
 
-    // Optimistically add user message
     addMessage({
       id: Date.now(),
       role: "user",
@@ -97,26 +86,28 @@ export default function DemoPage() {
     });
 
     try {
-      const res = await sendMessage(
-        userMessage,
-        activeSessionId || undefined
-      );
+      const res = await sendMessage(userMessage, activeSessionId || undefined);
       const data = res.data;
 
-      // Update session
       if (!activeSessionId) {
         setActiveSession(data.session_id);
         const sessRes = await getSessions();
         setSessions(sessRes.data);
       }
 
-      // Add assistant response
       addMessage({
         id: data.message_id + 1,
         role: "assistant",
         content: data.response,
         created_at: new Date().toISOString(),
       });
+
+      // Fallback: if WebSocket missed traces, use HTTP response traces
+      if (liveTraces.length === 0 && data.traces) {
+        data.traces.forEach((t: TraceItem) => appendLiveTrace(t));
+      }
+
+      setLoading(false);
     } catch {
       addMessage({
         id: Date.now(),
@@ -124,7 +115,6 @@ export default function DemoPage() {
         content: "Something went wrong. Please try again.",
         created_at: new Date().toISOString(),
       });
-    } finally {
       setLoading(false);
     }
   };
@@ -137,252 +127,275 @@ export default function DemoPage() {
   };
 
   return (
-    <div
-      className="flex h-screen overflow-hidden"
-      style={{ background: "#0a0f1e" }}
-    >
+    <div style={{
+      display: "flex",
+      height: "100vh",
+      overflow: "hidden",
+      background: "#0a0f1e",
+    }}>
+
       {/* Sidebar */}
-      <div
-        className="w-64 flex flex-col flex-shrink-0"
-        style={{
-          background: "#0d1526",
-          borderRight: "1px solid #1e3a5f",
-        }}
-      >
+      <div style={{
+        width: "240px",
+        flexShrink: 0,
+        display: "flex",
+        flexDirection: "column",
+        background: "#0d1526",
+        borderRight: "1px solid #1e3a5f",
+      }}>
         {/* Logo */}
-        <div
-          className="px-5 py-4 flex items-center gap-2"
-          style={{ borderBottom: "1px solid #1e3a5f" }}
-        >
-          <div
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-bold text-xs"
-            style={{ background: "#2563eb" }}
-          >
-            C
-          </div>
-          <span
-            className="font-semibold text-sm"
-            style={{ color: "#f0f4ff" }}
-          >
+        <div style={{
+          padding: "16px 20px",
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          borderBottom: "1px solid #1e3a5f",
+        }}>
+          <div style={{
+            width: "28px", height: "28px",
+            borderRadius: "8px",
+            background: "#2563eb",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: "#fff", fontWeight: "700", fontSize: "12px",
+            flexShrink: 0,
+          }}>C</div>
+          <span style={{ color: "#f0f4ff", fontWeight: "600", fontSize: "14px" }}>
             ContextOS
           </span>
         </div>
 
-        {/* New chat button */}
-        <div className="p-3">
+        {/* New chat */}
+        <div style={{ padding: "12px" }}>
           <button
-            onClick={() => {
-              setActiveSession(null);
-              clearLiveTraces();
-            }}
-            className="w-full rounded-lg px-3 py-2 text-sm font-medium text-left transition-all"
+            onClick={() => { setActiveSession(null); clearLiveTraces(); }}
             style={{
+              width: "100%",
               background: "#111d35",
               border: "1px solid #1e3a5f",
+              borderRadius: "8px",
+              padding: "8px 12px",
               color: "#f0f4ff",
+              fontSize: "13px",
+              fontWeight: "500",
+              textAlign: "left",
+              cursor: "pointer",
             }}
-            onMouseEnter={(e) =>
-              ((e.currentTarget as HTMLElement).style.borderColor = "#2563eb")
-            }
-            onMouseLeave={(e) =>
-              ((e.currentTarget as HTMLElement).style.borderColor = "#1e3a5f")
-            }
+            onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#2563eb")}
+            onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#1e3a5f")}
           >
             + New conversation
           </button>
         </div>
 
-        {/* Sessions list */}
-        <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-1">
+        {/* Sessions */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "0 12px 12px" }}>
           {sessions.map((session) => (
             <div
               key={session.id}
               onClick={() => handleSelectSession(session.id)}
-              className="group flex items-center justify-between rounded-lg px-3 py-2 cursor-pointer transition-all"
               style={{
-                background:
-                  activeSessionId === session.id
-                    ? "#111d35"
-                    : "transparent",
-                border:
-                  activeSessionId === session.id
-                    ? "1px solid #1e3a5f"
-                    : "1px solid transparent",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "8px 12px",
+                borderRadius: "8px",
+                cursor: "pointer",
+                marginBottom: "2px",
+                background: activeSessionId === session.id ? "#111d35" : "transparent",
+                border: activeSessionId === session.id ? "1px solid #1e3a5f" : "1px solid transparent",
+              }}
+              onMouseEnter={(e) => {
+                const del = e.currentTarget.querySelector(".del-btn") as HTMLElement;
+                if (del) del.style.opacity = "1";
+              }}
+              onMouseLeave={(e) => {
+                const del = e.currentTarget.querySelector(".del-btn") as HTMLElement;
+                if (del) del.style.opacity = "0";
               }}
             >
-              <span
-                className="text-xs truncate flex-1"
-                style={{
-                  color:
-                    activeSessionId === session.id ? "#f0f4ff" : "#6b8cba",
-                }}
-              >
+              <span style={{
+                fontSize: "12px",
+                color: activeSessionId === session.id ? "#f0f4ff" : "#6b8cba",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                flex: 1,
+              }}>
                 {session.title || "Untitled"}
               </span>
               <button
+                className="del-btn"
                 onClick={(e) => handleDeleteSession(e, session.id)}
-                className="opacity-0 group-hover:opacity-100 text-xs ml-2 transition-opacity"
-                style={{ color: "#ef4444" }}
-              >
-                ✕
-              </button>
+                style={{
+                  opacity: 0,
+                  color: "#ef4444",
+                  fontSize: "11px",
+                  marginLeft: "8px",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  transition: "opacity 0.15s",
+                }}
+              >✕</button>
             </div>
           ))}
         </div>
 
-        {/* User info + logout */}
-        <div
-          className="px-4 py-3 flex items-center justify-between"
-          style={{ borderTop: "1px solid #1e3a5f" }}
-        >
-          <span
-            className="text-xs truncate flex-1"
-            style={{ color: "#6b8cba" }}
-          >
+        {/* User */}
+        <div style={{
+          padding: "12px 16px",
+          borderTop: "1px solid #1e3a5f",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}>
+          <span style={{
+            fontSize: "11px",
+            color: "#6b8cba",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            flex: 1,
+          }}>
             {user?.email}
           </span>
           <button
-            onClick={() => {
-              logout();
-              router.push("/auth/login");
+            onClick={() => { logout(); router.push("/auth/login"); }}
+            style={{
+              fontSize: "11px",
+              color: "#ef4444",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              marginLeft: "8px",
             }}
-            className="text-xs ml-2 transition-colors"
-            style={{ color: "#ef4444" }}
-          >
-            Sign out
-          </button>
+          >Sign out</button>
         </div>
       </div>
 
       {/* Chat area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Chat header */}
-        <div
-          className="px-6 py-4 flex items-center justify-between"
-          style={{ borderBottom: "1px solid #1e3a5f" }}
-        >
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+
+        {/* Header */}
+        <div style={{
+          padding: "16px 24px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          borderBottom: "1px solid #1e3a5f",
+        }}>
           <div>
-            <h1
-              className="text-sm font-semibold"
-              style={{ color: "#f0f4ff" }}
-            >
+            <h1 style={{ color: "#f0f4ff", fontSize: "14px", fontWeight: "600", margin: 0 }}>
               {activeSessionId ? "Conversation" : "New conversation"}
             </h1>
-            <p className="text-xs mt-0.5" style={{ color: "#6b8cba" }}>
+            <p style={{ color: "#6b8cba", fontSize: "12px", margin: "2px 0 0" }}>
               Powered by ContextOS middleware pipeline
             </p>
           </div>
           <button
             onClick={() => router.push("/dashboard")}
-            className="text-xs px-3 py-1.5 rounded-lg transition-all"
             style={{
+              fontSize: "12px",
+              padding: "6px 12px",
+              borderRadius: "8px",
               background: "#111d35",
               border: "1px solid #1e3a5f",
               color: "#6b8cba",
+              cursor: "pointer",
             }}
-          >
-            Dashboard →
-          </button>
+          >Dashboard →</button>
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+        <div style={{
+          flex: 1,
+          overflowY: "auto",
+          padding: "24px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "16px",
+        }}>
           {messages.length === 0 && (
-            <div className="flex flex-col items-center justify-center h-full gap-4">
-              <div
-                className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl"
-                style={{
-                  background: "#0d1526",
-                  border: "1px solid #1e3a5f",
-                }}
-              >
-                ⚡
-              </div>
-              <div className="text-center">
-                <p
-                  className="font-medium text-sm"
-                  style={{ color: "#f0f4ff" }}
-                >
+            <div style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "100%",
+              gap: "16px",
+            }}>
+              <div style={{
+                width: "56px", height: "56px",
+                borderRadius: "16px",
+                background: "#0d1526",
+                border: "1px solid #1e3a5f",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: "24px",
+              }}>⚡</div>
+              <div style={{ textAlign: "center" }}>
+                <p style={{ color: "#f0f4ff", fontSize: "14px", fontWeight: "500", margin: "0 0 4px" }}>
                   ContextOS is ready
                 </p>
-                <p className="text-xs mt-1" style={{ color: "#6b8cba" }}>
+                <p style={{ color: "#6b8cba", fontSize: "12px", margin: 0 }}>
                   Send a message — watch the pipeline trace on the right
                 </p>
               </div>
-              {/* Feature pills */}
-              <div className="flex flex-wrap gap-2 justify-center mt-2">
-                {[
-                  "PII Guard",
-                  "Semantic Memory",
-                  "Token Compression",
-                  "Model Routing",
-                  "Toxicity Validation",
-                ].map((f) => (
-                  <span
-                    key={f}
-                    className="text-xs px-3 py-1 rounded-full"
-                    style={{
-                      background: "#0d1526",
-                      border: "1px solid #1e3a5f",
-                      color: "#6b8cba",
-                    }}
-                  >
-                    {f}
-                  </span>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", justifyContent: "center" }}>
+                {["PII Guard", "Semantic Memory", "Token Compression", "Model Routing", "Toxicity Validation"].map((f) => (
+                  <span key={f} style={{
+                    fontSize: "11px",
+                    padding: "4px 12px",
+                    borderRadius: "100px",
+                    background: "#0d1526",
+                    border: "1px solid #1e3a5f",
+                    color: "#6b8cba",
+                  }}>{f}</span>
                 ))}
               </div>
             </div>
           )}
 
           {messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-            >
-              <div
-                className="max-w-lg rounded-2xl px-4 py-3 text-sm leading-relaxed"
-                style={
-                  msg.role === "user"
-                    ? {
-                        background: "#2563eb",
-                        color: "#fff",
-                        borderBottomRightRadius: "4px",
-                      }
-                    : {
-                        background: "#0d1526",
-                        border: "1px solid #1e3a5f",
-                        color: "#f0f4ff",
-                        borderBottomLeftRadius: "4px",
-                      }
-                }
-              >
+            <div key={msg.id} style={{
+              display: "flex",
+              justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
+            }}>
+              <div style={{
+                maxWidth: "520px",
+                padding: "12px 16px",
+                borderRadius: "16px",
+                fontSize: "13px",
+                lineHeight: "1.6",
+                ...(msg.role === "user"
+                  ? { background: "#2563eb", color: "#fff", borderBottomRightRadius: "4px" }
+                  : { background: "#0d1526", border: "1px solid #1e3a5f", color: "#f0f4ff", borderBottomLeftRadius: "4px" }
+                ),
+              }}>
                 {msg.content}
               </div>
             </div>
           ))}
 
           {isLoading && (
-            <div className="flex justify-start">
-              <div
-                className="rounded-2xl px-4 py-3"
-                style={{
-                  background: "#0d1526",
-                  border: "1px solid #1e3a5f",
-                  borderBottomLeftRadius: "4px",
-                }}
-              >
-                <div className="flex gap-1 items-center">
-                  {[0, 1, 2].map((i) => (
-                    <div
-                      key={i}
-                      className="w-1.5 h-1.5 rounded-full animate-bounce"
-                      style={{
-                        background: "#2563eb",
-                        animationDelay: `${i * 150}ms`,
-                      }}
-                    />
-                  ))}
-                </div>
+            <div style={{ display: "flex", justifyContent: "flex-start" }}>
+              <div style={{
+                padding: "12px 16px",
+                borderRadius: "16px",
+                borderBottomLeftRadius: "4px",
+                background: "#0d1526",
+                border: "1px solid #1e3a5f",
+                display: "flex",
+                gap: "4px",
+                alignItems: "center",
+              }}>
+                {[0, 1, 2].map((i) => (
+                  <div key={i} style={{
+                    width: "6px", height: "6px",
+                    borderRadius: "50%",
+                    background: "#2563eb",
+                    animation: `bounce 1s ease-in-out ${i * 0.15}s infinite`,
+                  }} />
+                ))}
               </div>
             </div>
           )}
@@ -391,74 +404,85 @@ export default function DemoPage() {
         </div>
 
         {/* Input */}
-        <div
-          className="px-6 py-4"
-          style={{ borderTop: "1px solid #1e3a5f" }}
-        >
-          <div
-            className="flex gap-3 items-end rounded-xl px-4 py-3"
-            style={{
-              background: "#0d1526",
-              border: "1px solid #1e3a5f",
-            }}
-          >
+        <div style={{ padding: "16px 24px", borderTop: "1px solid #1e3a5f" }}>
+          <div style={{
+            display: "flex",
+            gap: "12px",
+            alignItems: "flex-end",
+            background: "#0d1526",
+            border: "1px solid #1e3a5f",
+            borderRadius: "12px",
+            padding: "12px 16px",
+          }}>
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Send a message — Enter to send, Shift+Enter for new line"
               rows={1}
-              className="flex-1 resize-none outline-none bg-transparent text-sm leading-relaxed"
               style={{
+                flex: 1,
+                resize: "none",
+                outline: "none",
+                background: "transparent",
                 color: "#f0f4ff",
+                fontSize: "13px",
+                lineHeight: "1.5",
+                border: "none",
                 maxHeight: "120px",
+                fontFamily: "inherit",
               }}
             />
             <button
               onClick={handleSend}
               disabled={isLoading || !input.trim()}
-              className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-              style={{ background: "#2563eb" }}
-              onMouseEnter={(e) =>
-                !isLoading &&
-                input.trim() &&
-                ((e.currentTarget as HTMLElement).style.background = "#1d4ed8")
-              }
-              onMouseLeave={(e) =>
-                ((e.currentTarget as HTMLElement).style.background = "#2563eb")
-              }
+              style={{
+                flexShrink: 0,
+                width: "32px", height: "32px",
+                borderRadius: "8px",
+                background: "#2563eb",
+                border: "none",
+                cursor: isLoading || !input.trim() ? "not-allowed" : "pointer",
+                opacity: isLoading || !input.trim() ? 0.4 : 1,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+              onMouseEnter={(e) => {
+                if (!isLoading && input.trim())
+                  e.currentTarget.style.background = "#1d4ed8";
+              }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "#2563eb"; }}
             >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="white"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="22" y1="2" x2="11" y2="13" />
                 <polygon points="22 2 15 22 11 13 2 9 22 2" />
               </svg>
             </button>
           </div>
-          <p className="text-xs text-center mt-2" style={{ color: "#1e3a5f" }}>
+          <p style={{ textAlign: "center", fontSize: "11px", color: "#1e3a5f", margin: "8px 0 0" }}>
             All requests processed through 7-stage middleware pipeline
           </p>
         </div>
       </div>
 
       {/* Trace panel */}
-      <div
-        className="w-80 flex-shrink-0"
-        style={{
-          background: "#0d1526",
-          borderLeft: "1px solid #1e3a5f",
-        }}
-      >
+      <div style={{
+        width: "300px",
+        flexShrink: 0,
+        background: "#0d1526",
+        borderLeft: "1px solid #1e3a5f",
+      }}>
         <TracePanel traces={liveTraces} isLoading={isLoading} />
       </div>
+
+      <style>{`
+        @keyframes bounce {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-4px); }
+        }
+      `}</style>
     </div>
   );
 }
