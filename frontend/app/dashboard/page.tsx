@@ -4,102 +4,57 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore, useStatsStore } from "@/lib/store";
 import { getStats, updatePolicy } from "@/lib/api";
-import {
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 
 const COLORS = ["#2563eb", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6"];
 
-function StatCard({
-  label,
-  value,
-  sub,
-  color,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-  color?: string;
+function StatCard({ label, value, sub, color }: {
+  label: string; value: string; sub?: string; color?: string;
 }) {
   return (
-    <div
-      className="rounded-xl p-5"
-      style={{
-        background: "#0d1526",
-        border: "1px solid #1e3a5f",
-      }}
-    >
-      <p className="text-xs mb-3" style={{ color: "#6b8cba" }}>
+    <div style={{
+      background: "#0d1526",
+      border: "1px solid #1e3a5f",
+      borderRadius: "12px",
+      padding: "20px",
+    }}>
+      <p style={{ color: "#6b8cba", fontSize: "11px", margin: "0 0 10px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
         {label}
       </p>
-      <p
-        className="text-3xl font-bold"
-        style={{ color: color || "#f0f4ff" }}
-      >
+      <p style={{ color: color || "#f0f4ff", fontSize: "28px", fontWeight: "700", margin: "0 0 4px" }}>
         {value}
       </p>
-      {sub && (
-        <p className="text-xs mt-1" style={{ color: "#6b8cba" }}>
-          {sub}
-        </p>
-      )}
+      {sub && <p style={{ color: "#6b8cba", fontSize: "11px", margin: 0 }}>{sub}</p>}
     </div>
   );
 }
 
-function Slider({
-  label,
-  value,
-  min,
-  max,
-  step,
-  onChange,
-  format,
-}: {
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  step: number;
-  onChange: (v: number) => void;
-  format?: (v: number) => string;
+function Slider({ label, value, min, max, step, onChange, format }: {
+  label: string; value: number; min: number; max: number;
+  step: number; onChange: (v: number) => void; format?: (v: number) => string;
 }) {
+  const pct = ((value - min) / (max - min)) * 100;
   return (
-    <div className="space-y-2">
-      <div className="flex justify-between items-center">
-        <span className="text-xs" style={{ color: "#6b8cba" }}>
-          {label}
-        </span>
-        <span
-          className="text-xs font-mono font-bold"
-          style={{ color: "#3b82f6" }}
-        >
+    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={{ fontSize: "12px", color: "#6b8cba" }}>{label}</span>
+        <span style={{ fontSize: "12px", fontFamily: "monospace", fontWeight: "700", color: "#3b82f6" }}>
           {format ? format(value) : value}
         </span>
       </div>
       <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
+        type="range" min={min} max={max} step={step} value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
         style={{
-          background: `linear-gradient(to right, #2563eb ${((value - min) / (max - min)) * 100}%, #1e3a5f ${((value - min) / (max - min)) * 100}%)`,
+          width: "100%", height: "4px", borderRadius: "2px", appearance: "none",
+          cursor: "pointer", outline: "none",
+          background: `linear-gradient(to right, #2563eb ${pct}%, #1e3a5f ${pct}%)`,
           accentColor: "#2563eb",
         }}
       />
-      <div
-        className="flex justify-between text-xs"
-        style={{ color: "#2d4a6e" }}
-      >
-        <span>{min}</span>
-        <span>{max}</span>
+      <div style={{ display: "flex", justifyContent: "space-between" }}>
+        <span style={{ fontSize: "10px", color: "#2d4a6e" }}>{min}</span>
+        <span style={{ fontSize: "10px", color: "#2d4a6e" }}>{max}</span>
       </div>
     </div>
   );
@@ -108,8 +63,7 @@ function Slider({
 export default function DashboardPage() {
   const router = useRouter();
   const { user, setUser, token, logout } = useAuthStore();
-  const { tokensSaved, totalRequests, avgLatencyMs, modelBreakdown, setStats } =
-    useStatsStore();
+  const { tokensSaved, totalRequests, avgLatencyMs, modelBreakdown, setStats } = useStatsStore();
 
   const [policy, setPolicy] = useState({
     token_budget: user?.token_budget || 2000,
@@ -123,10 +77,7 @@ export default function DashboardPage() {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    if (!token) {
-      router.push("/auth/login");
-      return;
-    }
+    if (!token) { router.push("/auth/login"); return; }
     getStats().then((res) => setStats(res.data));
   }, [token, router, setStats]);
 
@@ -137,304 +88,157 @@ export default function DashboardPage() {
       setUser(res.data);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
-    } catch {
-      // silent
-    } finally {
-      setSaving(false);
-    }
+    } catch { /* silent */ }
+    finally { setSaving(false); }
   };
 
-  const pieData = Object.entries(modelBreakdown).map(([name, value]) => ({
-    name,
-    value,
-  }));
+  const pieData = Object.entries(modelBreakdown).map(([name, value]) => ({ name, value }));
 
   return (
-    <div
-      className="min-h-screen"
-      style={{ background: "#0a0f1e" }}
-    >
+    <div style={{ minHeight: "100vh", background: "#0a0f1e" }}>
+
       {/* Nav */}
-      <div
-        className="px-8 py-4 flex items-center justify-between"
-        style={{
-          background: "#0d1526",
-          borderBottom: "1px solid #1e3a5f",
-        }}
-      >
-        <div className="flex items-center gap-3">
-          <div
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-bold text-xs"
-            style={{ background: "#2563eb" }}
-          >
-            C
-          </div>
-          <span className="font-semibold text-sm" style={{ color: "#f0f4ff" }}>
-            ContextOS
-          </span>
-          <span
-            className="text-xs px-2 py-0.5 rounded"
-            style={{
-              background: "#111d35",
-              border: "1px solid #1e3a5f",
-              color: "#6b8cba",
-            }}
-          >
-            Dashboard
-          </span>
+      <div style={{
+        padding: "14px 32px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        background: "#0d1526",
+        borderBottom: "1px solid #1e3a5f",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <div style={{
+            width: "28px", height: "28px", borderRadius: "8px",
+            background: "#2563eb", display: "flex", alignItems: "center",
+            justifyContent: "center", color: "#fff", fontWeight: "700", fontSize: "12px",
+          }}>C</div>
+          <span style={{ color: "#f0f4ff", fontWeight: "600", fontSize: "14px" }}>ContextOS</span>
+          <span style={{
+            fontSize: "11px", padding: "2px 8px", borderRadius: "4px",
+            background: "#111d35", border: "1px solid #1e3a5f", color: "#6b8cba",
+          }}>Dashboard</span>
         </div>
-        <div className="flex items-center gap-4">
+        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
           <button
             onClick={() => router.push("/demo")}
-            className="text-xs px-3 py-1.5 rounded-lg transition-all"
             style={{
-              background: "#2563eb",
-              color: "#fff",
+              fontSize: "12px", padding: "6px 14px", borderRadius: "8px",
+              background: "#2563eb", border: "none", color: "#fff", cursor: "pointer",
             }}
-          >
-            Open demo →
-          </button>
+          >Open demo →</button>
           <button
-            onClick={() => {
-              logout();
-              router.push("/auth/login");
-            }}
-            className="text-xs"
-            style={{ color: "#ef4444" }}
-          >
-            Sign out
-          </button>
+            onClick={() => { logout(); router.push("/auth/login"); }}
+            style={{ fontSize: "12px", color: "#ef4444", background: "none", border: "none", cursor: "pointer" }}
+          >Sign out</button>
         </div>
       </div>
 
-      <div className="px-8 py-8 max-w-6xl mx-auto space-y-8">
+      <div style={{ padding: "32px", maxWidth: "1100px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "32px" }}>
 
-        {/* Stats row */}
+        {/* Stats */}
         <div>
-          <h2
-            className="text-sm font-medium mb-4"
-            style={{ color: "#6b8cba" }}
-          >
+          <p style={{ color: "#6b8cba", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 16px" }}>
             Pipeline stats
-          </h2>
-          <div className="grid grid-cols-3 gap-4">
-            <StatCard
-              label="Tokens saved"
-              value={tokensSaved.toLocaleString()}
-              sub="via context compression"
-              color="#10b981"
-            />
-            <StatCard
-              label="Total requests"
-              value={totalRequests.toLocaleString()}
-              sub="through pipeline"
-            />
-            <StatCard
-              label="Avg latency"
-              value={`${avgLatencyMs}ms`}
-              sub="per LLM stage"
-              color="#3b82f6"
-            />
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "16px" }}>
+            <StatCard label="Tokens saved" value={tokensSaved.toLocaleString()} sub="via context compression" color="#10b981" />
+            <StatCard label="Total requests" value={totalRequests.toLocaleString()} sub="through pipeline" />
+            <StatCard label="Avg latency" value={`${avgLatencyMs}ms`} sub="per LLM stage" color="#3b82f6" />
           </div>
         </div>
 
-        {/* Model breakdown + Policy */}
-        <div className="grid grid-cols-2 gap-6">
+        {/* Chart + Policy */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
 
-          {/* Model routing chart */}
-          <div
-            className="rounded-xl p-6"
-            style={{
-              background: "#0d1526",
-              border: "1px solid #1e3a5f",
-            }}
-          >
-            <h3
-              className="text-sm font-medium mb-6"
-              style={{ color: "#f0f4ff" }}
-            >
+          {/* Model chart */}
+          <div style={{ background: "#0d1526", border: "1px solid #1e3a5f", borderRadius: "12px", padding: "24px" }}>
+            <h3 style={{ color: "#f0f4ff", fontSize: "13px", fontWeight: "600", margin: "0 0 20px" }}>
               Model routing breakdown
             </h3>
             {pieData.length > 0 ? (
-              <div>
+              <>
                 <ResponsiveContainer width="100%" height={180}>
                   <PieChart>
-                    <Pie
-                      data={pieData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={50}
-                      outerRadius={80}
-                      paddingAngle={3}
-                      dataKey="value"
-                    >
-                      {pieData.map((_, index) => (
-                        <Cell
-                          key={index}
-                          fill={COLORS[index % COLORS.length]}
-                        />
+                    <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3} dataKey="value">
+                      {pieData.map((_, i) => (
+                        <Cell key={i} fill={COLORS[i % COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        background: "#0d1526",
-                        border: "1px solid #1e3a5f",
-                        borderRadius: "8px",
-                        color: "#f0f4ff",
-                        fontSize: "12px",
-                      }}
-                    />
+                    <Tooltip contentStyle={{
+                      background: "#0d1526", border: "1px solid #1e3a5f",
+                      borderRadius: "8px", color: "#f0f4ff", fontSize: "12px",
+                    }} />
                   </PieChart>
                 </ResponsiveContainer>
-                <div className="space-y-2 mt-4">
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "16px" }}>
                   {pieData.map((entry, i) => (
-                    <div
-                      key={entry.name}
-                      className="flex items-center justify-between"
-                    >
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="w-2 h-2 rounded-full"
-                          style={{
-                            background: COLORS[i % COLORS.length],
-                          }}
-                        />
-                        <span
-                          className="text-xs font-mono"
-                          style={{ color: "#6b8cba" }}
-                        >
-                          {entry.name}
-                        </span>
+                    <div key={entry.name} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: COLORS[i % COLORS.length] }} />
+                        <span style={{ fontSize: "11px", fontFamily: "monospace", color: "#6b8cba" }}>{entry.name}</span>
                       </div>
-                      <span
-                        className="text-xs font-bold"
-                        style={{ color: "#f0f4ff" }}
-                      >
-                        {entry.value}
-                      </span>
+                      <span style={{ fontSize: "11px", fontWeight: "700", color: "#f0f4ff" }}>{entry.value}</span>
                     </div>
                   ))}
                 </div>
-              </div>
+              </>
             ) : (
-              <div
-                className="flex items-center justify-center h-40 text-sm"
-                style={{ color: "#2d4a6e" }}
-              >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "160px", color: "#2d4a6e", fontSize: "13px" }}>
                 No requests yet
               </div>
             )}
           </div>
 
-          {/* Policy settings */}
-          <div
-            className="rounded-xl p-6"
-            style={{
-              background: "#0d1526",
-              border: "1px solid #1e3a5f",
-            }}
-          >
-            <h3
-              className="text-sm font-medium mb-6"
-              style={{ color: "#f0f4ff" }}
-            >
+          {/* Policy */}
+          <div style={{ background: "#0d1526", border: "1px solid #1e3a5f", borderRadius: "12px", padding: "24px" }}>
+            <h3 style={{ color: "#f0f4ff", fontSize: "13px", fontWeight: "600", margin: "0 0 20px" }}>
               Pipeline policy
             </h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+              <Slider label="Token budget" value={policy.token_budget} min={500} max={8000} step={100}
+                onChange={(v) => setPolicy((p) => ({ ...p, token_budget: v }))}
+                format={(v) => `${v} tokens`} />
+              <Slider label="Temperature" value={policy.temperature} min={0} max={1} step={0.1}
+                onChange={(v) => setPolicy((p) => ({ ...p, temperature: v }))}
+                format={(v) => v.toFixed(1)} />
+              <Slider label="Toxicity threshold" value={policy.toxicity_threshold} min={0} max={1} step={0.1}
+                onChange={(v) => setPolicy((p) => ({ ...p, toxicity_threshold: v }))}
+                format={(v) => v.toFixed(1)} />
+              <Slider label="Memory chunks" value={policy.max_memory_chunks} min={1} max={10} step={1}
+                onChange={(v) => setPolicy((p) => ({ ...p, max_memory_chunks: v }))} />
 
-            <div className="space-y-6">
-              <Slider
-                label="Token budget"
-                value={policy.token_budget}
-                min={500}
-                max={8000}
-                step={100}
-                onChange={(v) =>
-                  setPolicy((p) => ({ ...p, token_budget: v }))
-                }
-                format={(v) => `${v} tokens`}
-              />
-              <Slider
-                label="Temperature"
-                value={policy.temperature}
-                min={0}
-                max={1}
-                step={0.1}
-                onChange={(v) =>
-                  setPolicy((p) => ({ ...p, temperature: v }))
-                }
-                format={(v) => v.toFixed(1)}
-              />
-              <Slider
-                label="Toxicity threshold"
-                value={policy.toxicity_threshold}
-                min={0}
-                max={1}
-                step={0.1}
-                onChange={(v) =>
-                  setPolicy((p) => ({ ...p, toxicity_threshold: v }))
-                }
-                format={(v) => v.toFixed(1)}
-              />
-              <Slider
-                label="Memory chunks"
-                value={policy.max_memory_chunks}
-                min={1}
-                max={10}
-                step={1}
-                onChange={(v) =>
-                  setPolicy((p) => ({ ...p, max_memory_chunks: v }))
-                }
-              />
-
-              {/* Toggles */}
-              <div className="flex items-center justify-between">
-                <span className="text-xs" style={{ color: "#6b8cba" }}>
-                  PII masking
-                </span>
+              {/* PII toggle */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <span style={{ fontSize: "12px", color: "#6b8cba" }}>PII masking</span>
                 <button
-                  onClick={() =>
-                    setPolicy((p) => ({
-                      ...p,
-                      pii_masking_enabled: !p.pii_masking_enabled,
-                    }))
-                  }
-                  className="w-10 h-5 rounded-full transition-all relative"
+                  onClick={() => setPolicy((p) => ({ ...p, pii_masking_enabled: !p.pii_masking_enabled }))}
                   style={{
-                    background: policy.pii_masking_enabled
-                      ? "#2563eb"
-                      : "#1e3a5f",
+                    width: "40px", height: "22px", borderRadius: "11px", border: "none",
+                    background: policy.pii_masking_enabled ? "#2563eb" : "#1e3a5f",
+                    cursor: "pointer", position: "relative", transition: "background 0.2s",
                   }}
                 >
-                  <div
-                    className="w-3.5 h-3.5 bg-white rounded-full absolute top-0.5 transition-all"
-                    style={{
-                      left: policy.pii_masking_enabled ? "22px" : "3px",
-                    }}
-                  />
+                  <div style={{
+                    width: "16px", height: "16px", borderRadius: "50%", background: "#fff",
+                    position: "absolute", top: "3px",
+                    left: policy.pii_masking_enabled ? "21px" : "3px",
+                    transition: "left 0.2s",
+                  }} />
                 </button>
               </div>
 
-              {/* Provider select */}
-              <div className="flex items-center justify-between">
-                <span className="text-xs" style={{ color: "#6b8cba" }}>
-                  Preferred provider
-                </span>
+              {/* Provider */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <span style={{ fontSize: "12px", color: "#6b8cba" }}>Preferred provider</span>
                 <select
                   value={policy.preferred_provider}
-                  onChange={(e) =>
-                    setPolicy((p) => ({
-                      ...p,
-                      preferred_provider: e.target.value,
-                    }))
-                  }
-                  className="text-xs rounded-lg px-3 py-1.5 outline-none"
+                  onChange={(e) => setPolicy((p) => ({ ...p, preferred_provider: e.target.value }))}
                   style={{
-                    background: "#111d35",
-                    border: "1px solid #1e3a5f",
-                    color: "#f0f4ff",
+                    fontSize: "12px", padding: "5px 10px", borderRadius: "6px", outline: "none",
+                    background: "#111d35", border: "1px solid #1e3a5f", color: "#f0f4ff", cursor: "pointer",
                   }}
                 >
-                  <option value="auto">Auto (recommended)</option>
+                  <option value="auto">Auto</option>
                   <option value="groq">Groq</option>
                   <option value="gemini">Gemini</option>
                 </select>
@@ -443,10 +247,13 @@ export default function DashboardPage() {
               <button
                 onClick={handleSavePolicy}
                 disabled={saving}
-                className="w-full py-2 rounded-lg text-sm font-medium transition-all disabled:opacity-50"
                 style={{
+                  width: "100%", padding: "10px", borderRadius: "8px", border: "none",
                   background: saved ? "#10b981" : "#2563eb",
-                  color: "#fff",
+                  color: "#fff", fontSize: "13px", fontWeight: "600",
+                  cursor: saving ? "not-allowed" : "pointer",
+                  opacity: saving ? 0.7 : 1,
+                  transition: "background 0.2s",
                 }}
               >
                 {saved ? "Saved ✓" : saving ? "Saving..." : "Save policy"}
@@ -455,49 +262,25 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* API key */}
-        <div
-          className="rounded-xl p-6"
-          style={{
-            background: "#0d1526",
-            border: "1px solid #1e3a5f",
-          }}
-        >
-          <h3
-            className="text-sm font-medium mb-3"
-            style={{ color: "#f0f4ff" }}
-          >
-            API key
-          </h3>
-          <div
-            className="flex items-center gap-3 rounded-lg px-4 py-3"
-            style={{
-              background: "#111d35",
-              border: "1px solid #1e3a5f",
-            }}
-          >
-            <code
-              className="text-xs flex-1 font-mono"
-              style={{ color: "#6b8cba" }}
-            >
+        {/* API Key */}
+        <div style={{ background: "#0d1526", border: "1px solid #1e3a5f", borderRadius: "12px", padding: "24px" }}>
+          <h3 style={{ color: "#f0f4ff", fontSize: "13px", fontWeight: "600", margin: "0 0 12px" }}>API key</h3>
+          <div style={{
+            display: "flex", alignItems: "center", gap: "12px",
+            background: "#111d35", border: "1px solid #1e3a5f", borderRadius: "8px", padding: "12px 16px",
+          }}>
+            <code style={{ fontSize: "12px", fontFamily: "monospace", color: "#6b8cba", flex: 1 }}>
               {user?.api_key || "—"}
             </code>
             <button
-              onClick={() => {
-                if (user?.api_key) {
-                  navigator.clipboard.writeText(user.api_key);
-                }
-              }}
-              className="text-xs px-3 py-1 rounded transition-all"
+              onClick={() => user?.api_key && navigator.clipboard.writeText(user.api_key)}
               style={{
-                background: "#1e3a5f",
-                color: "#6b8cba",
+                fontSize: "11px", padding: "5px 12px", borderRadius: "6px",
+                background: "#1e3a5f", border: "none", color: "#6b8cba", cursor: "pointer",
               }}
-            >
-              Copy
-            </button>
+            >Copy</button>
           </div>
-          <p className="text-xs mt-2" style={{ color: "#2d4a6e" }}>
+          <p style={{ color: "#2d4a6e", fontSize: "11px", margin: "8px 0 0" }}>
             Use this key to access the ContextOS API programmatically
           </p>
         </div>
