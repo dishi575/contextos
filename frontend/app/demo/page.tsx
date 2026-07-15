@@ -193,15 +193,15 @@ export default function DemoPage() {
           <MeshGradient
             width={dimensions.width}
             height={dimensions.height}
-            colors={["#03050a", "#070e20", "#010307", "#0a132e", "#101932", "#05060b"]}
-            distortion={0.9}
-            swirl={0.5}
+            colors={["#1e40af", "#3b82f6", "#4f46e5", "#7c3aed", "#06b6d4", "#020617"]}
+            distortion={1.1}
+            swirl={0.6}
             grainMixer={0}
             grainOverlay={0}
-            speed={0.25}
+            speed={0.35}
             offsetX={0.08}
           />
-          <div className="absolute inset-0 bg-black/45 pointer-events-none" />
+          <div className="absolute inset-0 bg-[#05070c]/75 pointer-events-none" />
         </div>
       )}
 
