@@ -56,8 +56,8 @@ export const updatePolicy = (data: {
 }) => api.patch("/api/auth/policy", data);
 
 // --- Chat ---
-export const sendMessage = (message: string, session_id?: number) =>
-  api.post("/api/chat/", { message, session_id });
+export const sendMessage = (message: string, session_id?: number, preferred_provider?: string) =>
+  api.post("/api/chat/", { message, session_id, preferred_provider });
 
 export const getSessions = () => api.get("/api/chat/sessions");
 

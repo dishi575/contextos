@@ -119,7 +119,7 @@ export default function DemoPage() {
     });
 
     try {
-      const res = await sendMessage(promptContent, activeSessionId || undefined);
+      const res = await sendMessage(promptContent, activeSessionId || undefined, provider);
       const data = res.data;
 
       // Set active log session if new

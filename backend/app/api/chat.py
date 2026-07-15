@@ -33,6 +33,7 @@ async def generate_session_title(message: str) -> str:
 class ChatRequest(BaseModel):
     message: str
     session_id: int | None = None
+    preferred_provider: str | None = None
 
 
 class TraceItem(BaseModel):
@@ -91,6 +92,10 @@ async def chat(
     # 3. Run through pipeline
     # Phase 1: direct call — pipeline stages added in Phase 2 and 3
     from app.pipeline.runner import run_pipeline
+    # Allow per-request provider override
+    if body.preferred_provider:
+        current_user.preferred_provider = body.preferred_provider
+
     result = await run_pipeline(
         message=body.message,
         user=current_user,
