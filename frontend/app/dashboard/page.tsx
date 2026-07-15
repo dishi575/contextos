@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuthStore, useStatsStore } from "@/lib/store";
 import { getStats, updatePolicy } from "@/lib/api";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
+import { MeshGradient } from "@paper-design/shaders-react";
 
 const COLORS = ["#2563eb", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6"];
 
@@ -12,19 +13,17 @@ function StatCard({ label, value, sub, color }: {
   label: string; value: string; sub?: string; color?: string;
 }) {
   return (
-    <div style={{
-      background: "#0d1526",
-      border: "1px solid #1e3a5f",
-      borderRadius: "12px",
-      padding: "20px",
-    }}>
-      <p style={{ color: "#6b8cba", fontSize: "11px", margin: "0 0 10px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+    <div className="rounded-xl border border-slate-800/80 bg-[#070b13]/85 backdrop-blur p-5 select-none transition-all duration-200 hover:border-slate-700">
+      <p className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest mb-2.5">
         {label}
       </p>
-      <p style={{ color: color || "#f0f4ff", fontSize: "28px", fontWeight: "700", margin: "0 0 4px" }}>
+      <p 
+        className="text-3xl font-extrabold tracking-tight mb-1"
+        style={{ color: color || "#f0f4ff" }}
+      >
         {value}
       </p>
-      {sub && <p style={{ color: "#6b8cba", fontSize: "11px", margin: 0 }}>{sub}</p>}
+      {sub && <p className="text-[10px] font-mono text-slate-500">{sub}</p>}
     </div>
   );
 }
@@ -35,26 +34,24 @@ function Slider({ label, value, min, max, step, onChange, format }: {
 }) {
   const pct = ((value - min) / (max - min)) * 100;
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span style={{ fontSize: "12px", color: "#6b8cba" }}>{label}</span>
-        <span style={{ fontSize: "12px", fontFamily: "monospace", fontWeight: "700", color: "#3b82f6" }}>
+    <div className="flex flex-col gap-2 font-mono">
+      <div className="flex justify-between items-center text-xs">
+        <span className="text-slate-400 font-medium uppercase tracking-wider text-[10px]">{label}</span>
+        <span className="font-extrabold text-blue-500">
           {format ? format(value) : value}
         </span>
       </div>
       <input
         type="range" min={min} max={max} step={step} value={value}
         onChange={(e) => onChange(Number(e.target.value))}
+        className="w-full h-1.5 rounded-lg appearance-none cursor-pointer outline-none bg-slate-800 accent-blue-600 transition-all duration-150"
         style={{
-          width: "100%", height: "4px", borderRadius: "2px", appearance: "none",
-          cursor: "pointer", outline: "none",
-          background: `linear-gradient(to right, #2563eb ${pct}%, #1e3a5f ${pct}%)`,
-          accentColor: "#2563eb",
+          background: `linear-gradient(to right, #2563eb ${pct}%, #1e293b ${pct}%)`,
         }}
       />
-      <div style={{ display: "flex", justifyContent: "space-between" }}>
-        <span style={{ fontSize: "10px", color: "#2d4a6e" }}>{min}</span>
-        <span style={{ fontSize: "10px", color: "#2d4a6e" }}>{max}</span>
+      <div className="flex justify-between text-[9px] text-slate-600">
+        <span>{min}</span>
+        <span>{max}</span>
       </div>
     </div>
   );
@@ -76,6 +73,21 @@ export default function DashboardPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  const [dimensions, setDimensions] = useState({ width: 1920, height: 1080 });
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    const update = () =>
+      setDimensions({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
   useEffect(() => {
     if (!token) { router.push("/auth/login"); return; }
     getStats().then((res) => setStats(res.data));
@@ -95,52 +107,61 @@ export default function DashboardPage() {
   const pieData = Object.entries(modelBreakdown).map(([name, value]) => ({ name, value }));
 
   return (
-    <div style={{ minHeight: "100vh", background: "#0a0f1e" }}>
+    <div className="relative min-h-screen bg-[#05070c] text-slate-200 overflow-x-hidden select-none">
+      
+      {/* Animated Dark Nebula Mesh Gradient Background */}
+      {mounted && (
+        <div className="fixed inset-0 w-screen h-screen z-0 overflow-hidden pointer-events-none">
+          <MeshGradient
+            width={dimensions.width}
+            height={dimensions.height}
+            colors={["#03050a", "#070e20", "#010307", "#0a132e", "#101932", "#05060b"]}
+            distortion={0.9}
+            swirl={0.5}
+            grainMixer={0}
+            grainOverlay={0}
+            speed={0.25}
+            offsetX={0.08}
+          />
+          <div className="absolute inset-0 bg-black/45 pointer-events-none" />
+        </div>
+      )}
 
       {/* Nav */}
-      <div style={{
-        padding: "14px 32px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        background: "#0d1526",
-        borderBottom: "1px solid #1e3a5f",
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <div style={{
-            width: "28px", height: "28px", borderRadius: "8px",
-            background: "#2563eb", display: "flex", alignItems: "center",
-            justifyContent: "center", color: "#fff", fontWeight: "700", fontSize: "12px",
-          }}>C</div>
-          <span style={{ color: "#f0f4ff", fontWeight: "600", fontSize: "14px" }}>ContextOS</span>
-          <span style={{
-            fontSize: "11px", padding: "2px 8px", borderRadius: "4px",
-            background: "#111d35", border: "1px solid #1e3a5f", color: "#6b8cba",
-          }}>Dashboard</span>
+      <div className="relative z-10 px-8 py-3.5 flex items-center justify-between border-b border-slate-900 bg-[#070b13]/85 backdrop-blur">
+        <div className="flex items-center gap-3">
+          <div className="w-7 h-7 rounded-lg bg-blue-600 shadow-[0_0_8px_rgba(37,99,235,0.4)] flex items-center justify-center text-white font-extrabold text-[11px]">
+            C
+          </div>
+          <span className="font-extrabold text-sm text-slate-200 tracking-wide">ContextOS</span>
+          <span className="font-mono text-[9px] px-2 py-0.5 rounded border border-slate-800 text-slate-400 bg-slate-900/35">
+            DASHBOARD
+          </span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+        <div className="flex items-center gap-4">
           <button
             onClick={() => router.push("/demo")}
-            style={{
-              fontSize: "12px", padding: "6px 14px", borderRadius: "8px",
-              background: "#2563eb", border: "none", color: "#fff", cursor: "pointer",
-            }}
-          >Open demo →</button>
+            className="text-[10px] font-mono font-bold bg-blue-600 hover:bg-blue-500 text-white px-3.5 py-1.5 rounded-lg shadow-[0_0_8px_rgba(37,99,235,0.3)] transition-all duration-150 cursor-pointer"
+          >
+            Open demo &rarr;
+          </button>
           <button
             onClick={() => { logout(); router.push("/auth/login"); }}
-            style={{ fontSize: "12px", color: "#ef4444", background: "none", border: "none", cursor: "pointer" }}
-          >Sign out</button>
+            className="text-[10px] font-mono font-bold text-rose-500 hover:text-rose-400 cursor-pointer"
+          >
+            Sign out
+          </button>
         </div>
       </div>
 
-      <div style={{ padding: "32px", maxWidth: "1100px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "32px" }}>
+      <div className="relative z-10 px-8 py-10 max-w-[1100px] mx-auto flex flex-col gap-8">
 
         {/* Stats */}
         <div>
-          <p style={{ color: "#6b8cba", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 16px" }}>
-            Pipeline stats
+          <p className="font-mono text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">
+            Pipeline Statistics
           </p>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "16px" }}>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <StatCard label="Tokens saved" value={tokensSaved.toLocaleString()} sub="via context compression" color="#10b981" />
             <StatCard label="Total requests" value={totalRequests.toLocaleString()} sub="through pipeline" />
             <StatCard label="Avg latency" value={`${avgLatencyMs}ms`} sub="per LLM stage" color="#3b82f6" />
@@ -148,140 +169,131 @@ export default function DashboardPage() {
         </div>
 
         {/* Chart + Policy */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
           {/* Model chart */}
-          <div style={{ background: "#0d1526", border: "1px solid #1e3a5f", borderRadius: "12px", padding: "24px" }}>
-            <h3 style={{ color: "#f0f4ff", fontSize: "13px", fontWeight: "600", margin: "0 0 20px" }}>
-              Model routing breakdown
+          <div className="rounded-xl border border-slate-800/80 bg-[#070b13]/85 backdrop-blur p-6">
+            <h3 className="font-mono text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-6">
+              Model Routing Breakdown
             </h3>
             {pieData.length > 0 ? (
               <>
-                <ResponsiveContainer width="100%" height={180}>
-                  <PieChart>
-                    <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3} dataKey="value">
-                      {pieData.map((_, i) => (
-                        <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip contentStyle={{
-                      background: "#0d1526", border: "1px solid #1e3a5f",
-                      borderRadius: "8px", color: "#f0f4ff", fontSize: "12px",
-                    }} />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "16px" }}>
+                <div className="w-full h-[180px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3} dataKey="value">
+                        {pieData.map((_, i) => (
+                          <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip contentStyle={{
+                        background: "#070b13", border: "1px solid #1e293b",
+                        borderRadius: "8px", color: "#f0f4ff", fontSize: "11px", fontFamily: "monospace"
+                      }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="flex flex-col gap-2.5 mt-4">
                   {pieData.map((entry, i) => (
-                    <div key={entry.name} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: COLORS[i % COLORS.length] }} />
-                        <span style={{ fontSize: "11px", fontFamily: "monospace", color: "#6b8cba" }}>{entry.name}</span>
+                    <div key={entry.name} className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full" style={{ background: COLORS[i % COLORS.length] }} />
+                        <span className="text-[11px] font-mono text-slate-500">{entry.name}</span>
                       </div>
-                      <span style={{ fontSize: "11px", fontWeight: "700", color: "#f0f4ff" }}>{entry.value}</span>
+                      <span className="text-[11px] font-mono font-bold text-slate-200">{entry.value} requests</span>
                     </div>
                   ))}
                 </div>
               </>
             ) : (
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "160px", color: "#2d4a6e", fontSize: "13px" }}>
-                No requests yet
+              <div className="flex items-center justify-center h-[180px] text-slate-600 text-xs font-mono">
+                No requests processed yet
               </div>
             )}
           </div>
 
           {/* Policy */}
-          <div style={{ background: "#0d1526", border: "1px solid #1e3a5f", borderRadius: "12px", padding: "24px" }}>
-            <h3 style={{ color: "#f0f4ff", fontSize: "13px", fontWeight: "600", margin: "0 0 20px" }}>
-              Pipeline policy
+          <div className="rounded-xl border border-slate-800/80 bg-[#070b13]/85 backdrop-blur p-6">
+            <h3 className="font-mono text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-6">
+              Active Pipeline Policy
             </h3>
-            <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-              <Slider label="Token budget" value={policy.token_budget} min={500} max={8000} step={100}
+            <div className="flex flex-col gap-5">
+              <Slider label="Token Budget" value={policy.token_budget} min={500} max={8000} step={100}
                 onChange={(v) => setPolicy((p) => ({ ...p, token_budget: v }))}
                 format={(v) => `${v} tokens`} />
               <Slider label="Temperature" value={policy.temperature} min={0} max={1} step={0.1}
                 onChange={(v) => setPolicy((p) => ({ ...p, temperature: v }))}
                 format={(v) => v.toFixed(1)} />
-              <Slider label="Toxicity threshold" value={policy.toxicity_threshold} min={0} max={1} step={0.1}
+              <Slider label="Toxicity Threshold" value={policy.toxicity_threshold} min={0} max={1} step={0.1}
                 onChange={(v) => setPolicy((p) => ({ ...p, toxicity_threshold: v }))}
                 format={(v) => v.toFixed(1)} />
-              <Slider label="Memory chunks" value={policy.max_memory_chunks} min={1} max={10} step={1}
+              <Slider label="Memory Chunks" value={policy.max_memory_chunks} min={1} max={10} step={1}
                 onChange={(v) => setPolicy((p) => ({ ...p, max_memory_chunks: v }))} />
 
               {/* PII toggle */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span style={{ fontSize: "12px", color: "#6b8cba" }}>PII masking</span>
+              <div className="flex items-center justify-between font-mono text-xs text-slate-400">
+                <span className="uppercase tracking-wider text-[10px]">PII Masking Shield</span>
                 <button
                   onClick={() => setPolicy((p) => ({ ...p, pii_masking_enabled: !p.pii_masking_enabled }))}
+                  className="w-10 h-[22px] rounded-full border-none relative transition-colors duration-200 cursor-pointer"
                   style={{
-                    width: "40px", height: "22px", borderRadius: "11px", border: "none",
-                    background: policy.pii_masking_enabled ? "#2563eb" : "#1e3a5f",
-                    cursor: "pointer", position: "relative", transition: "background 0.2s",
+                    background: policy.pii_masking_enabled ? "#2563eb" : "#1e293b",
                   }}
                 >
-                  <div style={{
-                    width: "16px", height: "16px", borderRadius: "50%", background: "#fff",
-                    position: "absolute", top: "3px",
-                    left: policy.pii_masking_enabled ? "21px" : "3px",
-                    transition: "left 0.2s",
-                  }} />
+                  <div className="w-4 h-4 rounded-full bg-white absolute top-[3px] transition-all duration-200"
+                    style={{
+                      left: policy.pii_masking_enabled ? "21px" : "3px",
+                    }} />
                 </button>
               </div>
 
               {/* Provider */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span style={{ fontSize: "12px", color: "#6b8cba" }}>Preferred provider</span>
+              <div className="flex items-center justify-between font-mono text-xs text-slate-400">
+                <span className="uppercase tracking-wider text-[10px]">Preferred LLM Provider</span>
                 <select
                   value={policy.preferred_provider}
                   onChange={(e) => setPolicy((p) => ({ ...p, preferred_provider: e.target.value }))}
-                  style={{
-                    fontSize: "12px", padding: "5px 10px", borderRadius: "6px", outline: "none",
-                    background: "#111d35", border: "1px solid #1e3a5f", color: "#f0f4ff", cursor: "pointer",
-                  }}
+                  className="text-xs px-2.5 py-1.5 rounded-lg outline-none bg-[#111d35]/50 border border-slate-800 text-slate-200 font-mono cursor-pointer transition-all duration-150 focus:border-slate-700"
                 >
-                  <option value="auto">Auto</option>
-                  <option value="groq">Groq</option>
-                  <option value="gemini">Gemini</option>
+                  <option value="auto">Auto Router</option>
+                  <option value="groq">Groq Llama</option>
+                  <option value="gemini">Gemini Flash</option>
                 </select>
               </div>
 
               <button
                 onClick={handleSavePolicy}
                 disabled={saving}
+                className="w-full font-mono text-xs font-bold py-3 px-4 rounded-lg border-none shadow-[0_0_8px_rgba(37,99,235,0.25)] tracking-wider uppercase transition-colors duration-200 cursor-pointer disabled:opacity-40 disabled:hover:opacity-40"
                 style={{
-                  width: "100%", padding: "10px", borderRadius: "8px", border: "none",
                   background: saved ? "#10b981" : "#2563eb",
-                  color: "#fff", fontSize: "13px", fontWeight: "600",
-                  cursor: saving ? "not-allowed" : "pointer",
-                  opacity: saving ? 0.7 : 1,
-                  transition: "background 0.2s",
+                  color: "#fff",
                 }}
               >
-                {saved ? "Saved ✓" : saving ? "Saving..." : "Save policy"}
+                {saved ? "Saved ✓" : saving ? "Saving parameters..." : "Save Policy Config"}
               </button>
             </div>
           </div>
         </div>
 
         {/* API Key */}
-        <div style={{ background: "#0d1526", border: "1px solid #1e3a5f", borderRadius: "12px", padding: "24px" }}>
-          <h3 style={{ color: "#f0f4ff", fontSize: "13px", fontWeight: "600", margin: "0 0 12px" }}>API key</h3>
-          <div style={{
-            display: "flex", alignItems: "center", gap: "12px",
-            background: "#111d35", border: "1px solid #1e3a5f", borderRadius: "8px", padding: "12px 16px",
-          }}>
-            <code style={{ fontSize: "12px", fontFamily: "monospace", color: "#6b8cba", flex: 1 }}>
+        <div className="rounded-xl border border-slate-800/80 bg-[#070b13]/85 backdrop-blur p-6">
+          <h3 className="font-mono text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">
+            Bearer Authorization API Key
+          </h3>
+          <div className="flex items-center gap-3 bg-[#111d35]/40 border border-slate-800 rounded-lg p-3">
+            <code className="text-xs font-mono text-blue-400 flex-1 truncate select-all">
               {user?.api_key || "—"}
             </code>
             <button
               onClick={() => user?.api_key && navigator.clipboard.writeText(user.api_key)}
-              style={{
-                fontSize: "11px", padding: "5px 12px", borderRadius: "6px",
-                background: "#1e3a5f", border: "none", color: "#6b8cba", cursor: "pointer",
-              }}
-            >Copy</button>
+              className="text-[10px] font-mono font-bold px-3 py-1.5 rounded bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200 transition-all duration-150 cursor-pointer"
+            >
+              Copy
+            </button>
           </div>
-          <p style={{ color: "#2d4a6e", fontSize: "11px", margin: "8px 0 0" }}>
-            Use this key to access the ContextOS API programmatically
+          <p className="font-mono text-[9px] text-slate-600 mt-2 tracking-wide">
+            USE THIS BEARER TOKEN TO QUERY THE CONTEXTOS TELEMETRY GATEWAY API PROGRAMMATICALLY
           </p>
         </div>
 

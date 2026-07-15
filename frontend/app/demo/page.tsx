@@ -13,6 +13,7 @@ import {
 } from "@/lib/api";
 import TracePanel from "@/components/TracePanel";
 import { PixelTrail } from "@/components/ui/pixel-trail";
+import { MeshGradient } from "@paper-design/shaders-react";
 
 export default function DemoPage() {
   const router = useRouter();
@@ -37,6 +38,21 @@ export default function DemoPage() {
   const [provider, setProvider] = useState<string>("auto");
   const wsRef = useRef<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const [dimensions, setDimensions] = useState({ width: 1920, height: 1080 });
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    const update = () =>
+      setDimensions({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
 
   // Auto-redirect if not logged in
   useEffect(() => {
@@ -169,10 +185,28 @@ export default function DemoPage() {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#05070c] text-slate-100 font-sans">
+    <div className="relative flex h-screen overflow-hidden bg-[#05070c] text-slate-100 font-sans select-none">
       
+      {/* Animated Dark Nebula Mesh Gradient Background */}
+      {mounted && (
+        <div className="fixed inset-0 w-screen h-screen z-0 overflow-hidden pointer-events-none">
+          <MeshGradient
+            width={dimensions.width}
+            height={dimensions.height}
+            colors={["#03050a", "#070e20", "#010307", "#0a132e", "#101932", "#05060b"]}
+            distortion={0.9}
+            swirl={0.5}
+            grainMixer={0}
+            grainOverlay={0}
+            speed={0.25}
+            offsetX={0.08}
+          />
+          <div className="absolute inset-0 bg-black/45 pointer-events-none" />
+        </div>
+      )}
+
       {/* 1. Left Sidebar: Execution Logs History */}
-      <div className="w-60 shrink-0 flex flex-col bg-[#070b13] border-r border-slate-800/80">
+      <div className="relative z-10 w-60 shrink-0 flex flex-col bg-[#070b13]/85 backdrop-blur-md border-r border-slate-800/80">
         
         {/* Console Brand Logo */}
         <div className="px-5 py-4 flex items-center gap-2.5 border-b border-slate-800/80 bg-slate-950/20 select-none">
@@ -256,10 +290,10 @@ export default function DemoPage() {
       </div>
 
       {/* 2. Middle Panel: Sandbox API Tracer & Request Console */}
-      <div className="flex-1 flex flex-col overflow-hidden bg-[#05070c]">
+      <div className="relative z-10 flex-1 flex flex-col overflow-hidden bg-[#05070c]/50 backdrop-blur-sm">
         
         {/* Navigation & Telemetry Health */}
-        <div className="px-6 py-4 flex items-center justify-between border-b border-slate-800/80 bg-[#070b13]/40 shrink-0 select-none">
+        <div className="px-6 py-4 flex items-center justify-between border-b border-slate-800/80 bg-[#070b13]/25 shrink-0 select-none">
           <div className="flex items-center gap-4">
             <div>
               <h1 className="text-xs font-bold uppercase tracking-wider text-slate-300">
@@ -536,7 +570,7 @@ export default function DemoPage() {
       </div>
 
       {/* 3. Right Panel: Real-time Pipeline Telemetry Trace Panel */}
-      <div className="w-[320px] shrink-0 border-l border-slate-800/80">
+      <div className="relative z-10 w-[320px] shrink-0 border-l border-slate-800/80 bg-[#070b13]/85 backdrop-blur-md">
         <TracePanel traces={liveTraces} isLoading={isLoading} />
       </div>
     </div>
