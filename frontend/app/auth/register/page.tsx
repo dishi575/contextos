@@ -53,10 +53,10 @@ export default function RegisterPage() {
       {/* Interactive Pixel Trail Background */}
       <div className="absolute inset-0 z-0">
         <PixelTrail
-          pixelSize={40}
-          fadeDuration={800}
+          pixelSize={44}
+          fadeDuration={850}
           delay={0}
-          pixelClassName="bg-blue-600/10 rounded-sm shadow-[0_0_6px_rgba(37,99,235,0.2)]"
+          pixelClassName="bg-blue-500/30 rounded-sm shadow-[0_0_10px_rgba(59,130,246,0.45)] border border-blue-500/15"
         />
       </div>
 
