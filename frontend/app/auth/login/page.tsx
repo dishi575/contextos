@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { login, getMe } from "@/lib/api";
 import { useAuthStore } from "@/lib/store";
+import { PixelTrail } from "@/components/ui/pixel-trail";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -32,129 +33,59 @@ export default function LoginPage() {
   };
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "0 16px",
-        background: "#0a0f1e",
-      }}
-    >
-      <div style={{ width: "100%", maxWidth: "420px" }}>
+    <div className="relative min-h-screen flex items-center justify-center px-4 bg-[#05070c] overflow-hidden select-none">
+      
+      {/* Interactive Pixel Trail Background */}
+      <div className="absolute inset-0 z-0">
+        <PixelTrail
+          pixelSize={40}
+          fadeDuration={800}
+          delay={0}
+          pixelClassName="bg-blue-600/10 rounded-sm shadow-[0_0_6px_rgba(37,99,235,0.2)]"
+        />
+      </div>
 
-        {/* Logo */}
-        <div style={{ textAlign: "center", marginBottom: "32px" }}>
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "10px",
-              marginBottom: "10px",
-            }}
-          >
-            <div
-              style={{
-                width: "32px",
-                height: "32px",
-                borderRadius: "8px",
-                background: "#2563eb",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "#fff",
-                fontWeight: "700",
-                fontSize: "14px",
-                flexShrink: 0,
-              }}
-            >
+      {/* Login Card (Elevated above background) */}
+      <div className="relative z-10 w-full max-w-[400px]">
+        {/* Brand Header */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center gap-2.5 mb-2.5">
+            <div className="w-8 h-8 rounded-lg bg-blue-600/90 shadow-[0_0_10px_rgba(37,99,235,0.45)] flex items-center justify-center text-white font-extrabold text-xs">
               C
             </div>
-            <h1
-              style={{
-                color: "#f0f4ff",
-                fontSize: "22px",
-                fontWeight: "700",
-                margin: 0,
-                letterSpacing: "-0.3px",
-              }}
-            >
+            <h1 className="text-xl font-extrabold text-slate-200 tracking-wide">
               ContextOS
             </h1>
           </div>
-          <p style={{ color: "#6b8cba", fontSize: "13px", margin: 0 }}>
-            Intelligent middleware for LLM applications
+          <p className="text-xs text-slate-500 font-mono tracking-widest uppercase">
+            OBSERVABILITY MIDDLEWARE
           </p>
         </div>
 
-        {/* Card */}
-        <div
-          style={{
-            background: "#0d1526",
-            border: "1px solid #1e3a5f",
-            borderRadius: "16px",
-            padding: "32px",
-          }}
-        >
-          <h2
-            style={{
-              color: "#f0f4ff",
-              fontSize: "17px",
-              fontWeight: "600",
-              margin: "0 0 24px",
-            }}
-          >
-            Sign in to your account
+        {/* Card Form container */}
+        <div className="rounded-xl border border-slate-800/80 bg-[#070b13]/85 backdrop-blur p-8 shadow-2xl">
+          <h2 className="text-sm font-bold uppercase tracking-wider text-slate-300 mb-6">
+            Sign In to Terminal
           </h2>
 
-          <form
-            onSubmit={handleLogin}
-            style={{ display: "flex", flexDirection: "column", gap: "16px" }}
-          >
+          <form onSubmit={handleLogin} className="flex flex-col gap-4">
             <div>
-              <label
-                style={{
-                  color: "#6b8cba",
-                  fontSize: "12px",
-                  display: "block",
-                  marginBottom: "6px",
-                }}
-              >
-                Email
+              <label className="block text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider mb-2">
+                operator_email
               </label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                placeholder="you@example.com"
-                style={{
-                  width: "100%",
-                  background: "#111d35",
-                  border: "1px solid #1e3a5f",
-                  borderRadius: "8px",
-                  padding: "10px 14px",
-                  color: "#f0f4ff",
-                  fontSize: "13px",
-                  outline: "none",
-                  boxSizing: "border-box",
-                }}
-                onFocus={(e) => (e.target.style.borderColor = "#2563eb")}
-                onBlur={(e) => (e.target.style.borderColor = "#1e3a5f")}
+                placeholder="operator@contextos.ai"
+                className="w-full bg-[#111d35]/40 border border-slate-800 focus:border-blue-600/50 rounded-lg px-3.5 py-2.5 text-xs text-slate-200 placeholder-slate-600 outline-none font-mono transition-all duration-150"
               />
             </div>
 
             <div>
-              <label
-                style={{
-                  color: "#6b8cba",
-                  fontSize: "12px",
-                  display: "block",
-                  marginBottom: "6px",
-                }}
-              >
-                Password
+              <label className="block text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider mb-2">
+                access_password
               </label>
               <input
                 type="password"
@@ -162,95 +93,39 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 placeholder="••••••••"
-                style={{
-                  width: "100%",
-                  background: "#111d35",
-                  border: "1px solid #1e3a5f",
-                  borderRadius: "8px",
-                  padding: "10px 14px",
-                  color: "#f0f4ff",
-                  fontSize: "13px",
-                  outline: "none",
-                  boxSizing: "border-box",
-                }}
-                onFocus={(e) => (e.target.style.borderColor = "#2563eb")}
-                onBlur={(e) => (e.target.style.borderColor = "#1e3a5f")}
+                className="w-full bg-[#111d35]/40 border border-slate-800 focus:border-blue-600/50 rounded-lg px-3.5 py-2.5 text-xs text-slate-200 placeholder-slate-600 outline-none font-mono transition-all duration-150"
               />
             </div>
 
             {error && (
-              <div
-                style={{
-                  background: "rgba(239,68,68,0.08)",
-                  border: "1px solid rgba(239,68,68,0.3)",
-                  borderRadius: "8px",
-                  padding: "10px 14px",
-                  color: "#f87171",
-                  fontSize: "13px",
-                }}
-              >
-                {error}
+              <div className="rounded-lg border border-rose-900/35 bg-rose-950/10 px-3.5 py-2.5 text-rose-400 font-mono text-[11px] leading-tight">
+                ⚠️ ACCESS_DENIED: {error}
               </div>
             )}
 
             <button
               type="submit"
               disabled={loading}
-              style={{
-                width: "100%",
-                background: "#2563eb",
-                color: "#fff",
-                border: "none",
-                borderRadius: "8px",
-                padding: "11px",
-                fontSize: "13px",
-                fontWeight: "600",
-                cursor: loading ? "not-allowed" : "pointer",
-                opacity: loading ? 0.6 : 1,
-                marginTop: "4px",
-              }}
-              onMouseEnter={(e) => {
-                if (!loading)
-                  (e.currentTarget as HTMLElement).style.background = "#1d4ed8";
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.background = "#2563eb";
-              }}
+              className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-45 text-white text-xs font-mono font-bold tracking-wider py-3 rounded-lg shadow-[0_0_8px_rgba(37,99,235,0.3)] transition-all duration-150 mt-2 uppercase"
             >
-              {loading ? "Signing in..." : "Sign in"}
+              {loading ? "Decrypting credentials..." : "Initialize Session"}
             </button>
           </form>
 
-          <p
-            style={{
-              color: "#6b8cba",
-              fontSize: "13px",
-              textAlign: "center",
-              marginTop: "24px",
-              marginBottom: 0,
-            }}
-          >
-            No account?{" "}
+          <p className="text-center text-xs text-slate-400 mt-6">
+            New operator?{" "}
             <Link
               href="/auth/register"
-              style={{ color: "#3b82f6", textDecoration: "none" }}
+              className="text-blue-500 hover:text-blue-400 font-semibold"
             >
-              Create one
+              Register endpoint
             </Link>
           </p>
         </div>
 
-        <p
-          style={{
-            textAlign: "center",
-            fontSize: "11px",
-            color: "#1e3a5f",
-            marginTop: "24px",
-          }}
-        >
-          7-stage AI middleware pipeline
+        <p className="text-center font-mono text-[9px] text-slate-600 mt-6 tracking-widest uppercase">
+          SECURE MIDDLEWARE OBSERVABILITY GATEWAY
         </p>
-
       </div>
     </div>
   );

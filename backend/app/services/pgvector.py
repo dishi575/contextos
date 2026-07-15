@@ -33,7 +33,8 @@ async def retrieve_similar_messages(
     Supports Postgres (pgvector) and has an in-memory NumPy fallback for SQLite.
     """
     # SQLite Fallback Path
-    if db.bind.dialect.name == "sqlite":
+    from app.core.config import get_settings
+    if "sqlite" in get_settings().DATABASE_URL:
         # 1. Fetch user's messages that have embeddings
         result = await db.execute(
             select(Message)

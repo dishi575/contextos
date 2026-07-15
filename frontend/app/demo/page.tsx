@@ -12,6 +12,7 @@ import {
   createTraceSocket,
 } from "@/lib/api";
 import TracePanel from "@/components/TracePanel";
+import { PixelTrail } from "@/components/ui/pixel-trail";
 
 export default function DemoPage() {
   const router = useRouter();
@@ -285,25 +286,37 @@ export default function DemoPage() {
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           
           {messages.length === 0 && (
-            <div className="flex flex-col items-center justify-center h-[260px] border border-dashed border-slate-800/80 rounded-xl px-6 py-10 bg-slate-950/5">
-              <div className="w-12 h-12 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-xl mb-4 shadow-sm select-none">
-                ⚙️
+            <div className="relative overflow-hidden flex flex-col items-center justify-center h-[260px] border border-dashed border-slate-800/80 rounded-xl px-6 py-10 bg-slate-950/5">
+              {/* Interactive Hover Pixel Trail Effect */}
+              <div className="absolute inset-0 z-0 pointer-events-none">
+                <PixelTrail
+                  pixelSize={32}
+                  fadeDuration={600}
+                  delay={0}
+                  pixelClassName="bg-blue-600/5 rounded-sm shadow-[0_0_4px_rgba(37,99,235,0.1)]"
+                />
               </div>
-              <h3 className="text-xs font-bold text-slate-300 tracking-wide uppercase mb-1">
-                Sandbox Playground Ready
-              </h3>
-              <p className="text-[10px] text-slate-500 text-center max-w-sm mb-4 leading-normal">
-                Submit raw prompts to evaluate your intelligent middleware settings. You can track latency, toxicity, and compression dynamically.
-              </p>
-              <div className="flex flex-wrap gap-1.5 justify-center">
-                {["PII Shield", "Semantic Context", "Lossless Compressor", "Dynamic Selector", "Toxicity Judge"].map((f) => (
-                  <span
-                    key={f}
-                    className="font-mono text-[9px] px-2.5 py-0.5 rounded border border-slate-800 text-slate-400 bg-slate-900/35"
-                  >
-                    {f}
-                  </span>
-                ))}
+
+              <div className="relative z-10 flex flex-col items-center justify-center pointer-events-none">
+                <div className="w-12 h-12 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-xl mb-4 shadow-sm select-none">
+                  ⚙️
+                </div>
+                <h3 className="text-xs font-bold text-slate-300 tracking-wide uppercase mb-1">
+                  Sandbox Playground Ready
+                </h3>
+                <p className="text-[10px] text-slate-500 text-center max-w-sm mb-4 leading-normal">
+                  Submit raw prompts to evaluate your intelligent middleware settings. You can track latency, toxicity, and compression dynamically.
+                </p>
+                <div className="flex flex-wrap gap-1.5 justify-center">
+                  {["PII Shield", "Semantic Context", "Lossless Compressor", "Dynamic Selector", "Toxicity Judge"].map((f) => (
+                    <span
+                      key={f}
+                      className="font-mono text-[9px] px-2.5 py-0.5 rounded border border-slate-800 text-slate-400 bg-slate-900/35"
+                    >
+                      {f}
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
           )}
