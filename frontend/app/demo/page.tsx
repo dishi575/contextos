@@ -459,9 +459,9 @@ export default function DemoPage() {
                   <div className={`rounded-lg border font-mono text-xs p-4 leading-relaxed ${
                     hasBlocked 
                       ? "bg-rose-950/10 border-rose-900/35 text-rose-300"
-                      : "bg-[#03060c] border-slate-900 text-slate-300"
+                      : "bg-[#03060c] border-slate-900/85 text-slate-300 shadow-inner"
                   }`}>
-                    {msg.content}
+                    {renderMessageContent(msg.content)}
                   </div>
                 </div>
               );
@@ -541,4 +541,128 @@ export default function DemoPage() {
       </div>
     </div>
   );
+}
+
+// Custom high-fidelity markdown parser for terminal responses
+function renderMessageContent(content: string) {
+  const lines = content.split("\n");
+  const renderedElements: React.ReactNode[] = [];
+  
+  let inCodeBlock = false;
+  let codeBlockLines: string[] = [];
+  let codeBlockLang = "";
+
+  lines.forEach((line, lineIdx) => {
+    // 1. Code Block Boundaries
+    if (line.trim().startsWith("```")) {
+      if (inCodeBlock) {
+        inCodeBlock = false;
+        renderedElements.push(
+          <div key={`code-${lineIdx}`} className="relative my-2 select-text group">
+            {codeBlockLang && (
+              <div className="absolute right-3 top-2 font-mono text-[8px] text-slate-500 uppercase font-bold tracking-widest pointer-events-none select-none">
+                {codeBlockLang}
+              </div>
+            )}
+            <pre className="bg-[#020408] border border-slate-900 rounded-lg p-3 font-mono text-[10px] text-sky-200 overflow-x-auto leading-relaxed shadow-inner">
+              <code>{codeBlockLines.join("\n")}</code>
+            </pre>
+          </div>
+        );
+        codeBlockLines = [];
+        codeBlockLang = "";
+      } else {
+        inCodeBlock = true;
+        codeBlockLang = line.trim().slice(3).toLowerCase();
+      }
+      return;
+    }
+
+    if (inCodeBlock) {
+      codeBlockLines.push(line);
+      return;
+    }
+
+    // 2. Headers
+    if (line.startsWith("### ")) {
+      renderedElements.push(
+        <h3 key={lineIdx} className="text-xs font-extrabold text-blue-400 mt-3 mb-1.5 font-mono uppercase tracking-wider">
+          {parseInlineMarkdown(line.slice(4))}
+        </h3>
+      );
+      return;
+    }
+    if (line.startsWith("## ")) {
+      renderedElements.push(
+        <h2 key={lineIdx} className="text-xs font-extrabold text-indigo-400 mt-4 mb-2 font-mono uppercase tracking-wider border-b border-slate-800/60 pb-1">
+          {parseInlineMarkdown(line.slice(3))}
+        </h2>
+      );
+      return;
+    }
+    if (line.startsWith("# ")) {
+      renderedElements.push(
+        <h1 key={lineIdx} className="text-sm font-extrabold text-slate-100 mt-4 mb-2 font-mono uppercase tracking-widest border-b border-slate-800 pb-1.5">
+          {parseInlineMarkdown(line.slice(2))}
+        </h1>
+      );
+      return;
+    }
+
+    // 3. Bullet Lists
+    if (line.trim().startsWith("* ") || line.trim().startsWith("- ")) {
+      renderedElements.push(
+        <div key={lineIdx} className="flex items-start gap-2 pl-4 py-0.5 font-mono text-xs text-slate-300">
+          <span className="text-blue-500 font-bold select-none">&bull;</span>
+          <span className="flex-1">{parseInlineMarkdown(line.trim().slice(2))}</span>
+        </div>
+      );
+      return;
+    }
+
+    // 4. Paragraph
+    if (line.trim() === "") {
+      renderedElements.push(<div key={lineIdx} className="h-2 select-none" />);
+      return;
+    }
+
+    renderedElements.push(
+      <p key={lineIdx} className="text-xs text-slate-300 font-mono leading-relaxed mb-1 pl-1">
+        {parseInlineMarkdown(line)}
+      </p>
+    );
+  });
+
+  if (inCodeBlock && codeBlockLines.length > 0) {
+    renderedElements.push(
+      <pre key="unclosed-code" className="bg-[#020408] border border-slate-900 rounded-lg p-3 font-mono text-[10px] text-sky-200 overflow-x-auto leading-relaxed my-2">
+        <code>{codeBlockLines.join("\n")}</code>
+      </pre>
+    );
+  }
+
+  return renderedElements;
+}
+
+// Inline Markdown Parser for bold **text** and inline `code`
+function parseInlineMarkdown(text: string) {
+  const parts = text.split(/(\*\*.*?\*\*|`.*?`)/g);
+  
+  return parts.map((part, idx) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return (
+        <strong key={idx} className="font-extrabold text-slate-100 bg-slate-900/40 px-1 py-0.5 rounded border border-slate-800/40">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+    if (part.startsWith("`") && part.endsWith("`")) {
+      return (
+        <code key={idx} className="font-mono text-[10px] text-sky-300 bg-sky-950/20 px-1.5 py-0.5 rounded border border-sky-900/30 shadow-[0_0_6px_rgba(56,189,248,0.05)]">
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+    return part;
+  });
 }
