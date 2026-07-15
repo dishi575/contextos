@@ -15,6 +15,68 @@ import TracePanel from "@/components/TracePanel";
 import { PixelTrail } from "@/components/ui/pixel-trail";
 import { MeshGradient } from "@paper-design/shaders-react";
 
+const STAGE_NODES = [
+  { id: "guard", label: "PII Guard", x: 60, y: 70 },
+  { id: "memory", label: "Memory Cache", x: 160, y: 45 },
+  { id: "compressor", label: "Compressor", x: 260, y: 70 },
+  { id: "router", label: "Model Router", x: 360, y: 45 },
+  { id: "llm", label: "LLM Exec", x: 460, y: 70 },
+  { id: "validator", label: "Safety Judge", x: 560, y: 45 },
+  { id: "tracer", label: "Trace Logger", x: 660, y: 70 }
+] as const;
+
+const STAGE_DETAILS = {
+  guard: {
+    title: "PII & Injection Shield",
+    desc: "Intercepts incoming prompt payloads to sanitize credentials, Aadhaar cards, emails, and strip jailbreak/injection attacks.",
+    latency: "~2.1ms",
+    status: "ACTIVE",
+    color: "text-emerald-400 border-emerald-900/40 bg-emerald-950/20"
+  },
+  memory: {
+    title: "Vector Memory Cache",
+    desc: "Queries pgvector embeddings from Supabase to retrieve semantically matching conversation chunks.",
+    latency: "~850ms",
+    status: "CONNECTED",
+    color: "text-sky-400 border-sky-900/40 bg-sky-950/20"
+  },
+  compressor: {
+    title: "Context Compressor",
+    desc: "Analyzes retrieved memory chunks, removing duplicates and redundant words to optimize context size.",
+    latency: "~1.2ms",
+    status: "ACTIVE",
+    color: "text-emerald-400 border-emerald-900/40 bg-emerald-950/20"
+  },
+  router: {
+    title: "Intelligent Model Router",
+    desc: "Uses a classifier to route simple queries to smaller models (Llama 8B) and complex code/reasoning to Gemini.",
+    latency: "~220ms",
+    status: "ACTIVE",
+    color: "text-emerald-400 border-emerald-900/40 bg-emerald-950/20"
+  },
+  llm: {
+    title: "LLM Execution Call",
+    desc: "Executes model completion with injected context memory and structured prompt directives.",
+    latency: "~350ms - 1500ms",
+    status: "ROUTING",
+    color: "text-sky-400 border-sky-900/40 bg-sky-950/20"
+  },
+  validator: {
+    title: "Output Safety Judge",
+    desc: "Validates model completions, evaluating hallucination levels and scoring toxicity thresholds.",
+    latency: "~180ms",
+    status: "ARMED",
+    color: "text-violet-400 border-violet-900/40 bg-violet-950/20"
+  },
+  tracer: {
+    title: "Trace Logger Writer",
+    desc: "Streams all telemetry latency logs, tokens, and router choices into the databases.",
+    latency: "~1.5ms",
+    status: "PASSING",
+    color: "text-emerald-400 border-emerald-900/40 bg-emerald-950/20"
+  }
+} as const;
+
 export default function DemoPage() {
   const router = useRouter();
   const { user, token, logout } = useAuthStore();
@@ -36,6 +98,7 @@ export default function DemoPage() {
   const [input, setInput] = useState("");
   const [selectedMessageId, setSelectedMessageId] = useState<number | null>(null);
   const [provider, setProvider] = useState<string>("auto");
+  const [hoveredStage, setHoveredStage] = useState<keyof typeof STAGE_DETAILS>("guard");
   const wsRef = useRef<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -347,48 +410,114 @@ export default function DemoPage() {
                   </span>
                 </div>
 
-                {/* 3-Column Middleware Status Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* Card 1 */}
-                  <div className="rounded-xl border border-slate-800/60 bg-[#070b13]/85 p-4 hover:border-slate-700 transition-all duration-200 select-none">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[11px] font-bold text-slate-300 tracking-tight">PII Masking Shield</span>
-                      <span className="text-[8px] font-mono font-bold text-emerald-400 border border-emerald-900/40 px-1.5 py-0.5 rounded bg-emerald-950/20 flex items-center gap-1">
-                        <span className="h-1 w-1 rounded-full bg-emerald-400 animate-pulse" />
-                        ACTIVE
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-slate-500 leading-relaxed font-mono">
-                      Intercepts and redacts phone numbers, emails, Aadhaar cards, and PAN credentials instantly at the edge.
-                    </p>
+                {/* Interactive SVG Pipeline Topology Graph */}
+                <div className="relative rounded-xl border border-slate-800/50 bg-[#070b13]/85 p-5 select-none transition-all duration-200">
+                  <style>{`
+                    @keyframes flow {
+                      from { stroke-dashoffset: 40; }
+                      to { stroke-dashoffset: 0; }
+                    }
+                    .animate-flow {
+                      animation: flow 1.5s linear infinite;
+                    }
+                  `}</style>
+                  
+                  <div className="w-full flex items-center justify-center">
+                    <svg viewBox="0 0 720 130" className="w-full max-w-[680px] h-auto overflow-visible select-none">
+                      {/* Connection curve lines */}
+                      <path
+                        d="M 60,70 Q 110,57.5 160,45 Q 210,57.5 260,70 Q 310,57.5 360,45 Q 410,57.5 460,70 Q 510,57.5 560,45 Q 610,57.5 660,70"
+                        stroke="#1e293b"
+                        strokeWidth="2.5"
+                        fill="none"
+                      />
+                      <path
+                        d="M 60,70 Q 110,57.5 160,45 Q 210,57.5 260,70 Q 310,57.5 360,45 Q 410,57.5 460,70 Q 510,57.5 560,45 Q 610,57.5 660,70"
+                        stroke="#3b82f6"
+                        strokeWidth="2.5"
+                        strokeDasharray="8 8"
+                        fill="none"
+                        className="animate-flow opacity-60"
+                      />
+
+                      {/* Render Nodes */}
+                      {STAGE_NODES.map((node, i) => {
+                        const isHovered = hoveredStage === node.id;
+                        return (
+                          <g
+                            key={node.id}
+                            onMouseEnter={() => setHoveredStage(node.id)}
+                            className="cursor-pointer group"
+                          >
+                            {/* Pulsing ring on hover */}
+                            <circle
+                              cx={node.x}
+                              cy={node.y}
+                              r={isHovered ? 17 : 12}
+                              className={`transition-all duration-200 fill-none ${
+                                isHovered 
+                                  ? "stroke-blue-500/30 stroke-[4px]" 
+                                  : "stroke-transparent group-hover:stroke-slate-800 group-hover:stroke-[3px]"
+                              }`}
+                            />
+                            {/* Central node circle */}
+                            <circle
+                              cx={node.x}
+                              cy={node.y}
+                              r="10"
+                              className={`transition-all duration-150 ${
+                                isHovered
+                                  ? "fill-blue-600 stroke-blue-400 stroke-2"
+                                  : "fill-slate-900 stroke-slate-800 stroke-2 group-hover:stroke-slate-600"
+                              }`}
+                            />
+                            {/* Text labels below / above node */}
+                            <text
+                              x={node.x}
+                              y={node.y + (node.y > 60 ? -16 : 22)}
+                              textAnchor="middle"
+                              className={`font-mono text-[8px] font-bold uppercase tracking-wider select-none transition-colors duration-150 ${
+                                isHovered ? "fill-blue-400 font-extrabold" : "fill-slate-500 group-hover:fill-slate-400"
+                              }`}
+                            >
+                              {node.label}
+                            </text>
+                            {/* Node stage index number */}
+                            <text
+                              x={node.x}
+                              y={node.y + 3}
+                              textAnchor="middle"
+                              className={`font-mono text-[7px] font-bold select-none ${
+                                isHovered ? "fill-white" : "fill-slate-400"
+                              }`}
+                            >
+                              {i + 1}
+                            </text>
+                          </g>
+                        );
+                      })}
+                    </svg>
                   </div>
 
-                  {/* Card 2 */}
-                  <div className="rounded-xl border border-slate-800/60 bg-[#070b13]/85 p-4 hover:border-slate-700 transition-all duration-200 select-none">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[11px] font-bold text-slate-300 tracking-tight">Vector Memory Cache</span>
-                      <span className="text-[8px] font-mono font-bold text-sky-400 border border-sky-900/40 px-1.5 py-0.5 rounded bg-sky-950/20 flex items-center gap-1">
-                        <span className="h-1 w-1 rounded-full bg-sky-400 animate-pulse" />
-                        CONNECTED
-                      </span>
+                  {/* Hovered Node Detail Panel */}
+                  <div className="mt-4 pt-3.5 border-t border-slate-850 flex items-start gap-4">
+                    <div className="flex flex-col gap-1.5 flex-1 font-mono">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-200 tracking-tight font-sans">
+                          {STAGE_DETAILS[hoveredStage].title}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[9px] text-slate-500">LATENCY: {STAGE_DETAILS[hoveredStage].latency}</span>
+                          <span className={`text-[8px] font-mono font-bold border px-1.5 py-0.5 rounded flex items-center gap-1 ${STAGE_DETAILS[hoveredStage].color}`}>
+                            <span className="h-1 w-1 rounded-full bg-current animate-pulse" />
+                            {STAGE_DETAILS[hoveredStage].status}
+                          </span>
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-slate-500 leading-normal font-sans">
+                        {STAGE_DETAILS[hoveredStage].desc}
+                      </p>
                     </div>
-                    <p className="text-[10px] text-slate-500 leading-relaxed font-mono">
-                      Queries vector embeddings database to retrieve relevant user history context prior to routing model calls.
-                    </p>
-                  </div>
-
-                  {/* Card 3 */}
-                  <div className="rounded-xl border border-slate-800/60 bg-[#070b13]/85 p-4 hover:border-slate-700 transition-all duration-200 select-none">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[11px] font-bold text-slate-300 tracking-tight">Output Safety Judge</span>
-                      <span className="text-[8px] font-mono font-bold text-violet-400 border border-violet-900/40 px-1.5 py-0.5 rounded bg-violet-950/20 flex items-center gap-1">
-                        <span className="h-1 w-1 rounded-full bg-violet-400 animate-pulse" />
-                        ARMED
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-slate-500 leading-relaxed font-mono">
-                      Performs real-time LLM validation on generated responses to screen and block toxicity, leaks or hallucination scores.
-                    </p>
                   </div>
                 </div>
 

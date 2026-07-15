@@ -28,6 +28,51 @@ function StatCard({ label, value, sub, color }: {
   );
 }
 
+function SegmentedBudgetSelector({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const min = 500;
+  const max = 8000;
+  const steps = 20;
+  const stepVal = (max - min) / steps;
+  
+  const activeSegments = Math.round((value - min) / stepVal);
+
+  return (
+    <div className="flex flex-col gap-2.5 font-mono select-none">
+      <div className="flex justify-between items-center text-xs">
+        <span className="text-slate-400 font-medium uppercase tracking-wider text-[10px]">Token Budget Capacity</span>
+        <span className="font-extrabold text-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.25)] px-2 py-0.5 rounded border border-blue-500/20 bg-blue-950/15">
+          {value} TOKENS
+        </span>
+      </div>
+      
+      <div className="flex items-center gap-1 bg-[#05070c]/60 border border-slate-800/80 rounded-lg p-2 h-11 justify-between">
+        {Array.from({ length: steps }).map((_, idx) => {
+          const isActive = idx <= activeSegments;
+          const segmentValue = Math.round(min + idx * stepVal);
+          
+          return (
+            <div
+              key={idx}
+              onClick={() => onChange(segmentValue)}
+              className={`flex-1 h-full rounded-[1px] transition-all duration-150 cursor-pointer ${
+                isActive
+                  ? "bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.5)] border-t border-blue-400/80"
+                  : "bg-slate-800/70 border-t border-slate-700/60 hover:bg-slate-700"
+              }`}
+              title={`${segmentValue} tokens`}
+            />
+          );
+        })}
+      </div>
+      
+      <div className="flex justify-between text-[9px] text-slate-600">
+        <span>MIN_CAP: 500</span>
+        <span>MAX_CAP: 8000</span>
+      </div>
+    </div>
+  );
+}
+
 function Slider({ label, value, min, max, step, onChange, format }: {
   label: string; value: number; min: number; max: number;
   step: number; onChange: (v: number) => void; format?: (v: number) => string;
@@ -218,9 +263,7 @@ export default function DashboardPage() {
               Active Pipeline Policy
             </h3>
             <div className="flex flex-col gap-5">
-              <Slider label="Token Budget" value={policy.token_budget} min={500} max={8000} step={100}
-                onChange={(v) => setPolicy((p) => ({ ...p, token_budget: v }))}
-                format={(v) => `${v} tokens`} />
+              <SegmentedBudgetSelector value={policy.token_budget} onChange={(v) => setPolicy((p) => ({ ...p, token_budget: v }))} />
               <Slider label="Temperature" value={policy.temperature} min={0} max={1} step={0.1}
                 onChange={(v) => setPolicy((p) => ({ ...p, temperature: v }))}
                 format={(v) => v.toFixed(1)} />
