@@ -102,14 +102,38 @@ Current message: {cleaned_message}"""
         full_prompt = cleaned_message
 
     if user.preferred_provider == "gemini":
-        from app.services.gemini import call_gemini
-        response = await call_gemini(full_prompt, model="flash")
-        model_used = "gemini-2.0-flash"
-    else:
+        try:
+            from app.services.gemini import call_gemini
+            response = await call_gemini(full_prompt, model="flash")
+            model_used = "gemini-2.0-flash"
+        except Exception:
+            response, model_used = await call_groq(
+                prompt=full_prompt,
+                category=category,
+            )
+    elif user.preferred_provider == "groq":
         response, model_used = await call_groq(
             prompt=full_prompt,
             category=category,
         )
+    else:
+        # Auto mode — route by category
+        if category in {"reasoning", "coding"}:
+            try:
+                from app.services.gemini import call_gemini
+                response = await call_gemini(full_prompt, model="flash")
+                model_used = "gemini-2.0-flash"
+            except Exception:
+                # Fallback to Groq if Gemini quota exhausted
+                response, model_used = await call_groq(
+                    prompt=full_prompt,
+                    category=category,
+                )
+        else:
+            response, model_used = await call_groq(
+                prompt=full_prompt,
+                category=category,
+            )
 
     llm_trace = {
         "stage": "llm",
