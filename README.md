@@ -88,13 +88,13 @@ flowchart LR
 
 ## Screenshots
 
-| Dashboard | Playground |
-|-----------|------------|
-| ![](assets/screenshots/dashboard.png) | ![](assets/screenshots/playground.png) |
+| Playground | Pipeline Execution |
+|------------|--------------------|
+| ![](assets/screenshots/playground.png) | ![](assets/screenshots/pipeline-execution.png) |
 
-| Pipeline | Analytics |
-|-----------|-----------|
-| ![](assets/screenshots/pipeline.png) | ![](assets/screenshots/analytics.png) |
+| PII Detection | Dashboard |
+|---------------|-----------|
+| ![](assets/screenshots/pii-detection.png) | ![](assets/screenshots/dashboard.png) |
 
 ---
 ## Tech Stack
