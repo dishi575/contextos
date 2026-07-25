@@ -90,11 +90,11 @@ flowchart LR
 
 | Playground | Pipeline Execution |
 |------------|--------------------|
-| ![](assets/screenshots/playground.png) | ![](assets/screenshots/pipeline-execution.png) |
+| ![](assets/playground.png) | ![](assets/pipeline-execution.png) |
 
 | PII Detection | Dashboard |
 |---------------|-----------|
-| ![](assets/screenshots/pii-detection.png) | ![](assets/screenshots/dashboard.png) |
+| ![](assets/pii-detection.png) | ![](assets/dashboard.png) |
 
 ---
 ## Tech Stack
