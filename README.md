@@ -58,6 +58,7 @@ A-->B-->C-->D-->E-->F-->G-->H-->I
 
 ## System Architecture
 
+```mermaid
 flowchart LR
 
     A["Client Application"] --> B["ContextOS API"]
@@ -83,8 +84,8 @@ flowchart LR
     style J fill:#9333ea,color:#fff
     style I fill:#ea580c,color:#fff
     style K fill:#16a34a,color:#fff
+```
 
----
 ## Screenshots
 
 | Dashboard | Playground |
