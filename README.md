@@ -2,97 +2,102 @@
 
 > **An AI Middleware Layer that Adds Memory, Security, Intelligent Routing, and Observability to Any LLM**
 
-ContextOS is a production-grade AI middleware platform that sits between your application and any Large Language Model (LLM). Instead of directly communicating with an LLM, every request passes through a configurable pipeline that enriches it with semantic memory, prompt security, context optimization, intelligent model routing, response validation, and real-time observability.
+ContextOS is a production-grade AI middleware platform that sits between applications and Large Language Models (LLMs). Every request flows through an intelligent processing pipeline that adds semantic memory, prompt security, context optimization, model routing, response validation, and end-to-end observability before reaching an LLM.
+
+<p align="center">
+
+[![Live Demo](https://img.shields.io/badge/Live-Demo-success)](https://contextos-zeta.vercel.app)
+[![API Docs](https://img.shields.io/badge/API-Docs-blue)](https://contextos-backend-9pbu.onrender.com/docs)
+[![Documentation](https://img.shields.io/badge/Documentation-grey)](docs/)
+[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+
+</p>
 
 ---
 
 ## Overview
 
-Modern AI applications require much more than simply calling an LLM API. Developers must independently implement conversation memory, security checks, context management, model selection, response validation, monitoring, and debugging.
-
-ContextOS centralizes these responsibilities into a reusable middleware layer, allowing applications to focus on business logic while the platform handles AI infrastructure concerns.
+ContextOS abstracts the infrastructure required to build production-ready AI applications. Instead of embedding memory, security, routing, and monitoring logic into every project, these responsibilities are centralized into a reusable middleware layer.
 
 ---
 
-## Key Features
+## Core Capabilities
 
 | Capability | Description |
 |------------|-------------|
-| Semantic Memory | Retrieves relevant historical context using vector search. |
-| Prompt Security | Detects and masks sensitive information before model execution. |
-| Context Compression | Optimizes retrieved context to fit configurable token budgets. |
-| Intelligent Routing | Dynamically selects the most suitable LLM. |
-| Multi-Provider Support | Works seamlessly with multiple LLM providers. |
-| Response Validation | Ensures generated responses meet safety requirements. |
-| Trace Logging | Records every pipeline stage for debugging and auditing. |
-| Real-Time Dashboard | Visualizes request execution, latency, and pipeline metrics. |
+| Semantic Memory | Retrieves relevant historical context using pgvector. |
+| Prompt Security | Detects PII and common prompt injection patterns. |
+| Context Compression | Optimizes retrieved context to fit token budgets. |
+| Intelligent Routing | Selects the most appropriate LLM dynamically. |
+| Multi-Provider Support | Supports Gemini and Groq providers. |
+| Response Validation | Evaluates responses before returning them. |
+| Observability | Streams execution traces and pipeline metrics in real time. |
 
 ---
 
-## Architecture
+## System Architecture
 
 ```mermaid
 flowchart LR
 
-Client --> ContextOS
+Client["Application"]
+Gateway["ContextOS"]
+Pipeline["Middleware Pipeline"]
+DB["PostgreSQL + pgvector"]
+LLM["Gemini / Groq"]
+Dashboard["Monitoring Dashboard"]
 
-ContextOS --> Pipeline
-
-Pipeline --> PostgreSQL
-
-Pipeline --> Gemini
-
-Pipeline --> Groq
-
+Client --> Gateway
+Gateway --> Pipeline
+Pipeline --> DB
+Pipeline --> LLM
 Pipeline --> Dashboard
 ```
 
 ---
 
-## Processing Pipeline
+## Request Pipeline
 
-Every request passes through the following middleware stages before reaching the language model.
+```mermaid
+flowchart TD
 
-```text
-User Request
-      │
-      ▼
-PII & Prompt Security
-      │
-      ▼
-Semantic Memory Retrieval
-      │
-      ▼
-Context Compression
-      │
-      ▼
-Intelligent Model Routing
-      │
-      ▼
-LLM Execution
-      │
-      ▼
-Response Validation
-      │
-      ▼
-Trace Logging
-      │
-      ▼
-Client Response
+A[User Request]
+B[PII & Prompt Security]
+C[Semantic Memory]
+D[Context Compression]
+E[Intelligent Routing]
+F[LLM Execution]
+G[Response Validation]
+H[Trace Logging]
+I[Client Response]
+
+A-->B-->C-->D-->E-->F-->G-->H-->I
 ```
+
+---
+
+## Screenshots
+
+| Feature | Preview |
+|---------|---------|
+| Dashboard | `assets/screenshots/dashboard.png` |
+| Playground | `assets/screenshots/playground.png` |
+| Pipeline | `assets/screenshots/pipeline.png` |
+| Analytics | `assets/screenshots/analytics.png` |
+| Settings | `assets/screenshots/settings.png` |
+| API Docs | `assets/screenshots/swagger.png` |
 
 ---
 
 ## Technology Stack
 
 | Layer | Technologies |
-|--------|--------------|
-| Frontend | Next.js, Tailwind CSS |
-| Backend | FastAPI |
+|-------|--------------|
+| Frontend | Next.js, Tailwind CSS, Zustand |
+| Backend | FastAPI, SQLAlchemy |
 | Database | PostgreSQL, pgvector |
-| ORM | SQLAlchemy |
-| Authentication | JWT |
-| AI Providers | Gemini, Groq |
+| AI | Gemini, Groq |
+| Authentication | JWT, API Keys |
 | Real-Time | WebSockets |
 | Deployment | Vercel, Render |
 | Containerization | Docker |
@@ -103,26 +108,22 @@ Client Response
 
 ```text
 contextos/
-│
 ├── backend/
 ├── frontend/
 ├── docs/
 ├── assets/
 ├── docker/
-│
 ├── README.md
 ├── LICENSE
-└── requirements.txt
+└── docker-compose.yml
 ```
 
 ---
 
 ## Getting Started
 
-### Clone the repository
-
 ```bash
-git clone https://github.com/username/contextos.git
+git clone https://github.com/dishi575/contextos.git
 cd contextos
 ```
 
@@ -146,63 +147,71 @@ npm run dev
 
 ## Environment Variables
 
-Create a `.env` file and configure:
+| Variable | Description |
+|----------|-------------|
+| DATABASE_URL | PostgreSQL connection |
+| GEMINI_API_KEY | Gemini API key |
+| GROQ_API_KEY | Groq API key |
+| JWT_SECRET | JWT signing secret |
 
-```env
-DATABASE_URL=
-JWT_SECRET=
-GEMINI_API_KEY=
-GROQ_API_KEY=
-SUPABASE_URL=
-SUPABASE_KEY=
-```
+See `docs/deployment.md` for the complete configuration.
 
 ---
 
 ## API Overview
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/chat` | Process an AI request |
-| GET | `/history` | Retrieve conversation history |
-| GET | `/trace/{id}` | View execution trace |
-| GET | `/metrics` | Pipeline metrics |
-| GET | `/health` | Service health status |
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| POST | `/api/chat` | Execute the middleware pipeline |
+| GET | `/api/chat/sessions` | List conversation sessions |
+| GET | `/api/traces/{id}` | Retrieve execution traces |
+| PATCH | `/api/auth/policy` | Update pipeline configuration |
+| GET | `/health` | Health check |
+
+Complete API documentation is available in `docs/api.md`.
+
+---
+
+## Engineering Highlights
+
+- Seven-stage configurable middleware pipeline
+- Semantic memory using PostgreSQL + pgvector
+- Configurable token-budget context compression
+- Intelligent multi-provider model routing
+- JWT authentication and API key support
+- Real-time trace streaming over WebSockets
+- Modular architecture for extending pipeline stages
 
 ---
 
 ## Documentation
 
-Additional documentation is available in the `docs/` directory.
+Detailed technical documentation is available in the `docs/` directory.
 
-- Architecture
-- Pipeline
-- API Reference
-- Database Design
-- Deployment Guide
-- Security
-- Engineering Decisions
+| Document | Description |
+|----------|-------------|
+| `overview.md` | Project overview |
+| `architecture.md` | System architecture |
+| `pipeline.md` | Pipeline internals |
+| `api.md` | REST & WebSocket APIs |
+| `database.md` | Database schema |
+| `security.md` | Security model |
+| `deployment.md` | Deployment guide |
+| `engineering.md` | Design decisions |
 
 ---
 
 ## Roadmap
 
 - [x] Semantic memory
-- [x] Multi-LLM support
 - [x] Prompt security
 - [x] Intelligent routing
-- [x] Response validation
 - [x] Real-time dashboard
-- [ ] Plugin architecture
-- [ ] Kubernetes deployment
+- [x] Multi-provider support
+- [ ] Plugin SDK
 - [ ] Distributed tracing
-- [ ] Multi-tenant support
-
----
-
-## License
-
-This project is licensed under the MIT License.
+- [ ] Kubernetes deployment
+- [ ] Multi-tenant architecture
 
 ---
 
@@ -210,4 +219,10 @@ This project is licensed under the MIT License.
 
 **Dishita Chaturvedi**
 
-AI/ML Engineering Student • Full-Stack Developer • AI Infrastructure Enthusiast
+AI/ML Engineer • Full-Stack Developer • AI Infrastructure
+
+---
+
+## License
+
+Licensed under the MIT License.
