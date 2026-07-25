@@ -1,37 +1,51 @@
 # ContextOS
 
-> **An AI Middleware Layer that Adds Memory, Security, Intelligent Routing, and Observability to Any LLM**
+> An AI middleware layer that adds semantic memory, prompt security, intelligent routing, and real-time observability to any LLM application.
 
-ContextOS is a production-grade AI middleware platform that sits between applications and Large Language Models (LLMs). Every request flows through an intelligent processing pipeline that adds semantic memory, prompt security, context optimization, model routing, response validation, and end-to-end observability before reaching an LLM.
+ContextOS sits between your application and an LLM. Every request flows through a 7-stage pipeline that adds context, security, and observability before the model ever sees your prompt.
 
 <p align="center">
 
 [![Live Demo](https://img.shields.io/badge/Live-Demo-success)](https://contextos-zeta.vercel.app)
 [![API Docs](https://img.shields.io/badge/API-Docs-blue)](https://contextos-backend-9pbu.onrender.com/docs)
-[![Documentation](https://img.shields.io/badge/Documentation-grey)](docs/)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
 </p>
 
 ---
 
-## Overview
+## What It Does
 
-ContextOS abstracts the infrastructure required to build production-ready AI applications. Instead of embedding memory, security, routing, and monitoring logic into every project, these responsibilities are centralized into a reusable middleware layer.
+Instead of building memory, security, routing, and monitoring into every LLM project separately, ContextOS centralizes all of it into one reusable middleware service. Send a request to ContextOS instead of directly to an LLM and get back a sanitized, context-aware, validated response — along with a full execution trace.
 
 ---
 
-## Core Capabilities
+## The Pipeline
 
-| Capability | Description |
-|------------|-------------|
-| Semantic Memory | Retrieves relevant historical context using pgvector. |
-| Prompt Security | Detects PII and common prompt injection patterns. |
-| Context Compression | Optimizes retrieved context to fit token budgets. |
-| Intelligent Routing | Selects the most appropriate LLM dynamically. |
-| Multi-Provider Support | Supports Gemini and Groq providers. |
-| Response Validation | Evaluates responses before returning them. |
-| Observability | Streams execution traces and pipeline metrics in real time. |
+```mermaid
+flowchart TD
+A[User Request]
+B[PII & Injection Guard]
+C[Vector Memory Retriever]
+D[Context Compressor]
+E[Intelligent Model Router]
+F[LLM Execution]
+G[Output Safety Validator]
+H[Trace Logger]
+I[Response + Live Trace]
+
+A-->B-->C-->D-->E-->F-->G-->H-->I
+```
+
+| Stage | What it does |
+|---|---|
+| PII & Injection Guard | Masks emails, phones, Aadhaar, PAN. Blocks jailbreak attempts. |
+| Vector Memory Retriever | Embeds prompt via Gemini, retrieves semantically similar past messages from pgvector. |
+| Context Compressor | Trims retrieved memory to fit user's token budget using tiktoken. |
+| Intelligent Model Router | Classifies prompt and routes to cheapest capable model. |
+| LLM Execution | Calls Groq or Gemini with injected context. Exponential backoff retry. |
+| Output Safety Validator | LLM-as-judge toxicity scoring. Blocks above user threshold. |
+| Trace Logger | Batch writes all stage traces to DB. Streams live via WebSocket. |
 
 ---
 
@@ -39,84 +53,27 @@ ContextOS abstracts the infrastructure required to build production-ready AI app
 
 ```mermaid
 flowchart LR
-
-Client["Application"]
-Gateway["ContextOS"]
-Pipeline["Middleware Pipeline"]
-DB["PostgreSQL + pgvector"]
-LLM["Gemini / Groq"]
-Dashboard["Monitoring Dashboard"]
-
-Client --> Gateway
-Gateway --> Pipeline
-Pipeline --> DB
-Pipeline --> LLM
-Pipeline --> Dashboard
+Client["Application"] --> Gateway["ContextOS API"]
+Gateway --> Pipeline["7-Stage Pipeline"]
+Pipeline --> DB["Supabase PostgreSQL + pgvector"]
+Pipeline --> LLM["Groq / Gemini"]
+Pipeline --> Dashboard["Real-Time Dashboard"]
 ```
 
 ---
 
-## Request Pipeline
-
-```mermaid
-flowchart TD
-
-A[User Request]
-B[PII & Prompt Security]
-C[Semantic Memory]
-D[Context Compression]
-E[Intelligent Routing]
-F[LLM Execution]
-G[Response Validation]
-H[Trace Logging]
-I[Client Response]
-
-A-->B-->C-->D-->E-->F-->G-->H-->I
-```
-
----
-
-## Screenshots
-
-| Feature | Preview |
-|---------|---------|
-| Dashboard | `assets/screenshots/dashboard.png` |
-| Playground | `assets/screenshots/playground.png` |
-| Pipeline | `assets/screenshots/pipeline.png` |
-| Analytics | `assets/screenshots/analytics.png` |
-| Settings | `assets/screenshots/settings.png` |
-| API Docs | `assets/screenshots/swagger.png` |
-
----
-
-## Technology Stack
+## Tech Stack
 
 | Layer | Technologies |
-|-------|--------------|
-| Frontend | Next.js, Tailwind CSS, Zustand |
-| Backend | FastAPI, SQLAlchemy |
-| Database | PostgreSQL, pgvector |
-| AI | Gemini, Groq |
-| Authentication | JWT, API Keys |
-| Real-Time | WebSockets |
-| Deployment | Vercel, Render |
-| Containerization | Docker |
-
----
-
-## Repository Structure
-
-```text
-contextos/
-├── backend/
-├── frontend/
-├── docs/
-├── assets/
-├── docker/
-├── README.md
-├── LICENSE
-└── docker-compose.yml
-```
+|---|---|
+| Frontend | Next.js 16, Tailwind CSS v4, Zustand, Recharts |
+| Backend | FastAPI, async SQLAlchemy, asyncpg |
+| Database | Supabase PostgreSQL, pgvector (3072-dim vectors) |
+| AI — Generation | Groq (Llama 3.3 70B, Llama 3.1 8B, Mixtral 8x7B) |
+| AI — Embeddings | Gemini embedding-001 |
+| Authentication | JWT + bcrypt + API keys (`ctx_` prefix) |
+| Real-Time | WebSockets (FastAPI native) |
+| Deployment | Vercel (frontend), Render (backend) |
 
 ---
 
@@ -127,16 +84,14 @@ git clone https://github.com/dishi575/contextos.git
 cd contextos
 ```
 
-### Backend
-
+**Backend**
 ```bash
 cd backend
-pip install -r requirements.txt
+pip install -r requirements.txt  # requires Python 3.11
 uvicorn app.main:app --reload
 ```
 
-### Frontend
-
+**Frontend**
 ```bash
 cd frontend
 npm install
@@ -147,82 +102,79 @@ npm run dev
 
 ## Environment Variables
 
-| Variable | Description |
-|----------|-------------|
-| DATABASE_URL | PostgreSQL connection |
-| GEMINI_API_KEY | Gemini API key |
-| GROQ_API_KEY | Groq API key |
-| JWT_SECRET | JWT signing secret |
+**`backend/.env`**
 
-See `docs/deployment.md` for the complete configuration.
+| Variable | Description |
+|---|---|
+| `DATABASE_URL` | `postgresql+asyncpg://...supabase.co/postgres` |
+| `SECRET_KEY` | JWT signing secret (`openssl rand -hex 32`) |
+| `GEMINI_API_KEY` | From aistudio.google.com |
+| `GROQ_API_KEY` | From console.groq.com |
+| `DEBUG` | `True` for local, `False` for production |
+
+**`frontend/.env.local`**
+
+| Variable | Description |
+|---|---|
+| `NEXT_PUBLIC_API_URL` | Backend URL |
+| `NEXT_PUBLIC_WS_URL` | Backend WebSocket URL (`ws://` or `wss://`) |
 
 ---
 
 ## API Overview
 
 | Method | Endpoint | Purpose |
-|--------|----------|---------|
-| POST | `/api/chat` | Execute the middleware pipeline |
+|---|---|---|
+| POST | `/api/auth/register` | Register operator account |
+| POST | `/api/auth/login` | Login, returns JWT |
+| PATCH | `/api/auth/policy` | Update pipeline config |
+| POST | `/api/chat/` | Run request through full pipeline |
 | GET | `/api/chat/sessions` | List conversation sessions |
-| GET | `/api/traces/{id}` | Retrieve execution traces |
-| PATCH | `/api/auth/policy` | Update pipeline configuration |
+| GET | `/api/traces/{message_id}` | Get pipeline traces for a message |
+| GET | `/api/traces/stats/summary` | Aggregate dashboard stats |
+| WS | `/ws/traces?token=JWT` | Live trace event stream |
 | GET | `/health` | Health check |
 
-Complete API documentation is available in `docs/api.md`.
+Full API docs at [contextos-backend-9pbu.onrender.com/docs](https://contextos-backend-9pbu.onrender.com/docs)
 
 ---
 
 ## Engineering Highlights
 
-- Seven-stage configurable middleware pipeline
-- Semantic memory using PostgreSQL + pgvector
-- Configurable token-budget context compression
-- Intelligent multi-provider model routing
-- JWT authentication and API key support
-- Real-time trace streaming over WebSockets
-- Modular architecture for extending pipeline stages
-
----
-
-## Documentation
-
-Detailed technical documentation is available in the `docs/` directory.
-
-| Document | Description |
-|----------|-------------|
-| `overview.md` | Project overview |
-| `architecture.md` | System architecture |
-| `pipeline.md` | Pipeline internals |
-| `api.md` | REST & WebSocket APIs |
-| `database.md` | Database schema |
-| `security.md` | Security model |
-| `deployment.md` | Deployment guide |
-| `engineering.md` | Design decisions |
+- 7-stage configurable middleware pipeline with per-stage trace logging
+- Semantic memory using pgvector cosine similarity (`<=>` operator) in PostgreSQL
+- Token budget context compression with tiktoken — logs tokens saved per request
+- Multi-provider model routing — Groq for speed, Gemini for reasoning/coding, with automatic fallback
+- Per-user pipeline policy (token budget, temperature, toxicity threshold, memory chunks, PII masking, provider preference)
+- Real-time WebSocket trace streaming with live pipeline stage animation
+- Indian-context PII detection (Aadhaar, PAN, +91 phone numbers)
+- LLM-as-judge output toxicity validation with configurable threshold
+- JWT + API key dual authentication
 
 ---
 
 ## Roadmap
 
-- [x] Semantic memory
-- [x] Prompt security
-- [x] Intelligent routing
-- [x] Real-time dashboard
-- [x] Multi-provider support
-- [ ] Plugin SDK
-- [ ] Distributed tracing
-- [ ] Kubernetes deployment
+- [x] 7-stage middleware pipeline
+- [x] Semantic memory with pgvector
+- [x] Multi-provider routing (Groq + Gemini)
+- [x] Real-time observability dashboard
+- [x] Per-user pipeline policy configuration
+- [x] WebSocket live trace streaming
+- [ ] Plugin SDK for custom pipeline stages
+- [ ] Docker + docker-compose setup
 - [ ] Multi-tenant architecture
+- [ ] Distributed tracing (OpenTelemetry)
 
 ---
 
 ## Author
 
-**Dishita Chaturvedi**
-
-AI/ML Engineer • Full-Stack Developer • AI Infrastructure
+**Dishita Chaturvedi** — AI/ML Engineer · Full-Stack Developer  
+[github.com/dishi575](https://github.com/dishi575)
 
 ---
 
 ## License
 
-Licensed under the MIT License.
+MIT
