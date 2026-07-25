@@ -19,6 +19,13 @@ ContextOS sits between your application and an LLM. Every request flows through 
 Instead of building memory, security, routing, and monitoring into every LLM project separately, ContextOS centralizes all of it into one reusable middleware service. Send a request to ContextOS instead of directly to an LLM and get back a sanitized, context-aware, validated response — along with a full execution trace.
 
 ---
+## Why ContextOS?
+
+Building production AI applications requires much more than calling an LLM API. Every application eventually needs conversation memory, prompt security, intelligent model selection, response validation, and observability. These capabilities are often implemented independently in every project.
+
+ContextOS centralizes these concerns into a reusable middleware layer, allowing developers to integrate production-ready AI infrastructure without rebuilding it from scratch.
+
+---
 
 ## The Pipeline
 
@@ -51,17 +58,44 @@ A-->B-->C-->D-->E-->F-->G-->H-->I
 
 ## System Architecture
 
-```mermaid
 flowchart LR
-Client["Application"] --> Gateway["ContextOS API"]
-Gateway --> Pipeline["7-Stage Pipeline"]
-Pipeline --> DB["Supabase PostgreSQL + pgvector"]
-Pipeline --> LLM["Groq / Gemini"]
-Pipeline --> Dashboard["Real-Time Dashboard"]
-```
+
+    A["Client Application"] --> B["ContextOS API"]
+
+    B --> C["Middleware Pipeline"]
+
+    C --> D["Security Layer"]
+    C --> E["Semantic Memory"]
+    C --> F["Model Router"]
+    C --> G["Response Validator"]
+    C --> H["Trace Logger"]
+
+    D --> I["Gemini / Groq"]
+    E --> J["Supabase PostgreSQL<br/>+ pgvector"]
+    F --> I
+    G --> I
+
+    H --> K["Real-Time Dashboard"]
+    H --> J
+
+    style B fill:#2563eb,color:#fff
+    style C fill:#0f766e,color:#fff
+    style J fill:#9333ea,color:#fff
+    style I fill:#ea580c,color:#fff
+    style K fill:#16a34a,color:#fff
 
 ---
+## Screenshots
 
+| Dashboard | Playground |
+|-----------|------------|
+| ![](assets/screenshots/dashboard.png) | ![](assets/screenshots/playground.png) |
+
+| Pipeline | Analytics |
+|-----------|-----------|
+| ![](assets/screenshots/pipeline.png) | ![](assets/screenshots/analytics.png) |
+
+---
 ## Tech Stack
 
 | Layer | Technologies |
@@ -76,7 +110,19 @@ Pipeline --> Dashboard["Real-Time Dashboard"]
 | Deployment | Vercel (frontend), Render (backend) |
 
 ---
+## Repository Structure
 
+```text
+contextos/
+├── backend/
+├── frontend/
+├── docs/
+├── assets/
+├── docker/
+├── README.md
+└── LICENSE
+```
+---
 ## Getting Started
 
 ```bash
@@ -152,7 +198,21 @@ Full API docs at [contextos-backend-9pbu.onrender.com/docs](https://contextos-ba
 - JWT + API key dual authentication
 
 ---
+## Documentation
 
+Detailed documentation for the project is available in the `docs/` directory.
+
+| Guide | Description |
+|--------|-------------|
+| `architecture.md` | System architecture and component interactions |
+| `pipeline.md` | Detailed explanation of the 7-stage middleware pipeline |
+| `api.md` | REST and WebSocket API reference |
+| `database.md` | Database schema and vector storage |
+| `deployment.md` | Local setup and production deployment |
+| `security.md` | Authentication, authorization, and security mechanisms |
+| `engineering.md` | Design decisions and implementation trade-offs |
+
+---
 ## Roadmap
 
 - [x] 7-stage middleware pipeline
